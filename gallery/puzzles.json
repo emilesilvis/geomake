@@ -1,0 +1,50 @@
+[
+  {
+    "recipe": "l_shape",
+    "question": "A 4 cm × 5 cm rectangle is removed from the corner of a 9 cm × 9 cm rectangle. Find the shaded area.",
+    "target_kind": "area",
+    "answer": {
+      "exact": "61",
+      "latex": "61",
+      "float": 61.0,
+      "display": "61 cm²"
+    },
+    "solution_steps": [
+      "Full rectangle = 9 × 9 = 81 cm²",
+      "Removed corner = 4 × 5 = 20 cm²",
+      "Shaded = 81 − 20 = 61 cm²"
+    ],
+    "difficulty": {
+      "depth": 2,
+      "width": 2,
+      "nonstandard": true,
+      "construction_steps": 2
+    },
+    "construction": [
+      {
+        "op": "place_rect",
+        "name": "ABCD",
+        "w": "9",
+        "h": "9",
+        "origin": "(0, 0)"
+      },
+      {
+        "op": "place_rect",
+        "name": "PQRS",
+        "w": "4",
+        "h": "5",
+        "origin": "(5, 4)"
+      }
+    ],
+    "params": {
+      "w": "9",
+      "h": "9",
+      "cw": "4",
+      "ch": "5"
+    },
+    "unit": "cm",
+    "seed": 1942955373,
+    "image": "puzzle_000_l_shape_d2.png",
+    "id": 0
+  }
+]
