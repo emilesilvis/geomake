@@ -27,9 +27,40 @@ python3 -m venv .venv
 # graded easy->hard ladder (validated ordering) + answer key in ladder/answers/
 .venv/bin/python -m geomake ladder --n 12 --seed 7 --out ladder
 
+# seven authored daily sessions for two, with optional help and discussion
+.venv/bin/python -m geomake pilot --seed 7 --out out/daily-pilot
+# Open out/daily-pilot/START_HERE.md; share the whole folder with your partner.
+
+# Minimal browser reader, matching emilesilvis.com's existing stylesheet
+python3 reader/build.py
+python3 reader/serve.py
+# Open http://localhost:3000/geomake/
+
 .venv/bin/python -m geomake recipes     # list all recipes by depth
 .venv/bin/python -m pytest tests/       # every recipe x 25 random seeds
 ```
+
+## Toward a daily puzzle tool
+
+`geomake pilot` produces a seven-day content trial: one shared main puzzle per
+day, six optional warm-ups, three separately revealed hints per main puzzle,
+worked explanations, optional extensions, and prompts to compare approaches.
+The question pages include the full statement alongside the diagram. Both
+players should use the same edition seed and preserve the folder structure.
+Output folders must be empty, so generating another edition cannot overwrite
+feedback. The `editor.json` manifest contains spoilers.
+
+This sequence is authored around geometric discoveries, including invariance,
+decomposition, and symmetry. It is a hypothesis to try with real players;
+changing its seed supplies numerical variations of the same week. The
+[static reader](reader/README.md) shows the question, answer check, progressive
+hints, solution, previous/next links and a collapsed list of all puzzles. It uses emilesilvis.com's stylesheet
+and existing GitHub Pages hosting, and remembers entered answers in the current
+browser. It does not schedule future days or synchronize player progress.
+
+See the [daily-tool design and build sequence](docs/daily-puzzle-tool.md) and
+the [primary-source research](docs/puzzle-design-research.md). The design
+document contains spoilers; use the generated `START_HERE.md` to solve.
 
 ## Architecture
 
@@ -55,6 +86,9 @@ verify.py     numerical verification by random seeds: shapely boolean ops
    v
 render.py     matplotlib rendering: shaded region, outlines, dimension /
               angle / radius annotations, red "?" on the asked quantity
+
+pilot.py      authored daily sessions: prerequisites, graduated hints,
+              explanations, comparisons, extensions, and a feedback sheet
 ```
 
 ### Difficulty axes (GeomVerse conventions)
@@ -71,22 +105,30 @@ results (square − inscribed circle). Depth 3 = longer chains, branching, or
 figure-to-figure chaining (rectangle area → shared side → square → inscribed
 circle), where the given for one shape must be *derived* from another.
 
-### Recipes (18)
+Every generated puzzle also has an **estimated difficulty label**: depth 1 →
+**Easy**, depth 2 → **Medium**, depth 3 → **Hard**. The label is exported in
+`difficulty.label` and shown on standalone puzzle images, pilot question
+pages, and the browser reader and archive. The other scoring factors order
+puzzles within a band; these broad labels are not calibrated player ratings.
+
+### Recipes (21)
 
 - **depth 1** — `rect_area`, `tri_right_area`, `circle_area`,
   `triangle_angle_sum`, `square_diagonal`
 - **depth 2** — `square_minus_incircle`, `rect_minus_semicircle`,
   `circle_minus_insquare`, `l_shape`, `overlap_squares_center`,
-  `isosceles_base_angle`, `quarter_circle_corner`, `annulus`
+  `isosceles_base_angle`, `quarter_circle_corner`, `annulus`, `sliding_triangle`
 - **depth 3** — `leaf_lens`, `square_circle_square`, `four_quarter_circles`,
-  `chained_rect_square_circle`, `square_plus_semicircle`
+  `chained_rect_square_circle`, `square_plus_semicircle`,
+  `tangent_chord_annulus`, `rotated_square_overlap`
 
 Targets cover **area** (shaded region), **length**, and **angle**.
 
 ### Ladders: a validated easy->hard sequence
 
 `geomake ladder` builds a sequence that ramps gradually, for solving in
-order. Difficulty is scored from recorded metadata — `(depth, solution
+order under a structural score. This is not a calibrated measure of human
+difficulty or enjoyment. Difficulty is scored from recorded metadata — `(depth, solution
 steps, width, nonstandard shape, construction ops)`, lexicographic — and the
 finished sequence is independently validated before it is accepted:
 
@@ -108,7 +150,7 @@ human-vs-training-data decision doesn't fork the architecture:
 - `puzzle_NNN_<recipe>_dK.png` — rendered figure with a red `?`
 - `puzzles.json` / `puzzles.jsonl` — per puzzle: question text, exact answer
   (`36 − 9π`, latex, float, display form), step-by-step solution chain
-  (chain-of-thought), difficulty metadata, the full construction trace, the
+  (worked mathematical explanation), difficulty metadata, the full construction trace, the
   sampled parameters, and the seed (fully reproducible)
 
 ## Verification model
@@ -124,6 +166,13 @@ recipe in the test suite:
   rectangle") — symmetric-difference area ≈ 0
 - **length / angle targets** — re-measured from float coordinates
 - degenerate constructions (non-positive answers) are rejected
+
+Numerical checks establish facts about the constructed figure. They do not
+establish that arbitrary subsets of givens determine a unique answer, or that
+the puzzle is satisfying. The curated pilot includes an explicit public-fact
+derivation for each family in its design notes, tests hidden-parameter
+invariance, and keeps construction helpers out of question outlines. Actual
+player feedback remains necessary to calibrate the progression.
 
 ## Extending
 

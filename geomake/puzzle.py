@@ -14,6 +14,8 @@ import sympy as sp
 
 from .core import Region, Shape, fmt_exact, fmt_latex
 
+DIFFICULTY_LABELS = {1: "Easy", 2: "Medium", 3: "Hard"}
+
 
 @dataclass
 class Given:
@@ -79,6 +81,11 @@ class Puzzle:
     seed: int | None = None
 
     @property
+    def difficulty_label(self) -> str:
+        """Estimated difficulty band, based on the recipe's authored depth."""
+        return DIFFICULTY_LABELS[self.depth]
+
+    @property
     def answer_exact(self):
         return sp.simplify(self.target.exact_value())
 
@@ -116,6 +123,7 @@ class Puzzle:
             },
             "solution_steps": self.solution_steps,
             "difficulty": {
+                "label": self.difficulty_label,
                 "depth": self.depth,
                 "width": self.width,
                 "nonstandard": self.nonstandard,

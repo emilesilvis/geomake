@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Puzzle {{day}}</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="styles.css?v={{assets}}">
+  <script src="theme.js?v={{assets}}"></script>
+  <script type="module" src="app.js?v={{assets}}"></script>
+</head>
+<body>
+  <main data-edition="{{edition}}" data-day="{{day}}" data-help="{{help}}" data-hints="{{hint_count}}">
+    <nav class="puzzle-nav" aria-label="Puzzles">
+      {{previous}}
+      <h1>Puzzle {{day}}</h1>
+      {{next}}
+    </nav>
+    <p class="difficulty">Estimated difficulty: {{difficulty}}</p>
+    <p id="question">{{question}}</p>
+    <img class="diagram" src="{{image}}" alt="{{alt}}" width="676" height="676">
+    <form id="answer-form">
+      <label for="answer">Answer <span class="unit">({{unit}})</span></label>
+      <div class="answer-row">
+        <input id="answer" name="answer" type="text" maxlength="160" autocomplete="off" spellcheck="false" aria-describedby="answer-format">
+        <button id="check" type="submit">Check</button>
+      </div>
+      <small id="answer-format">Use π, fractions, or sqrt(2). Decimals to two places are fine.</small>
+    </form>
+    <p id="feedback" role="status" hidden></p>
+    <div class="help-actions">
+      <button id="hint" class="text-button" type="button">Hint</button>
+      <button id="explain" class="text-button" type="button" aria-expanded="false" aria-controls="solution">Solution</button>
+    </div>
+    <ol id="hints" aria-live="polite" hidden></ol>
+    <section id="solution" aria-label="Solution" hidden></section>
+    <details class="puzzle-list">
+      <summary>All puzzles</summary>
+      <ol>{{archive}}</ol>
+    </details>
+    <noscript><p>Enable JavaScript to check answers or reveal hints.</p></noscript>
+  </main>
+</body>
+</html>

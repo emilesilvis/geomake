@@ -33,6 +33,7 @@ class Scene:
     points: dict = field(default_factory=dict)  # label -> Point
     ops: list = field(default_factory=list)  # construction trace (op, args)
     lines: list = field(default_factory=list)  # aux segments: (p1, p2, style)
+    hidden_shapes: set[str] = field(default_factory=set)
 
     def add_line(self, p1: Point, p2: Point, style: str = "solid"):
         self.ops.append({"op": "draw_segment", "p1": str(p1), "p2": str(p2)})
@@ -41,8 +42,12 @@ class Scene:
     def _log(self, op: str, **kw):
         self.ops.append({"op": op, **{k: str(v) for k, v in kw.items()}})
 
-    def add(self, shape: Shape) -> Shape:
+    def add(self, shape: Shape, *, visible: bool = True) -> Shape:
         self.shapes[shape.name] = shape
+        if visible:
+            self.hidden_shapes.discard(shape.name)
+        else:
+            self.hidden_shapes.add(shape.name)
         return shape
 
     def pt(self, label: str, p: Point) -> Point:
@@ -54,6 +59,18 @@ class Scene:
     def place_square(self, name: str, side, origin=(0, 0)) -> Polygon:
         s = square(name, P(*origin), side)
         self._log("place_square", name=name, side=side, origin=origin)
+        return self.add(s)
+
+    def place_rotated_square(self, name: str, side, origin: Point, angle) -> Polygon:
+        """Square with a corner at origin and its first side at angle radians."""
+        x, y = origin
+        dx = sp.sympify(side) * sp.cos(angle)
+        dy = sp.sympify(side) * sp.sin(angle)
+        s = Polygon(name=name, pts=(
+            P(x, y), P(x + dx, y + dy),
+            P(x + dx - dy, y + dy + dx), P(x - dy, y + dx),
+        ))
+        self._log("place_rotated_square", name=name, side=side, origin=origin, angle=angle)
         return self.add(s)
 
     def place_rect(self, name: str, w, h, origin=(0, 0)) -> Polygon:
@@ -127,13 +144,13 @@ class Scene:
         self._log("semicircle_on_side", name=name, p1=p1, p2=p2)
         return self.add(s)
 
-    def segment_between(self, name: str, center: Point, r, theta1, theta2) -> CircSegment:
+    def segment_between(self, name: str, center: Point, r, theta1, theta2, *, visible=True) -> CircSegment:
         s = CircSegment(
             name=name, center=center, r=sp.sympify(r),
             theta1=sp.sympify(theta1), theta2=sp.sympify(theta2),
         )
-        self._log("circular_segment", name=name, center=center, r=r, t1=theta1, t2=theta2)
-        return self.add(s)
+        self._log("circular_segment", name=name, center=center, r=r, t1=theta1, t2=theta2, visible=visible)
+        return self.add(s, visible=visible)
 
     def overlap_rect_of_squares(self, name: str, s1: Polygon, s2: Polygon) -> Polygon:
         """Axis-aligned overlap rectangle of two axis-aligned squares/rects.

@@ -13,7 +13,7 @@ import random
 
 import sympy as sp
 
-from .core import P, Region, fmt_exact, midpoint
+from .core import P, Polygon, Region, fmt_exact, midpoint
 from .puzzle import Given, Puzzle, Target
 from .scene import Scene
 
@@ -300,7 +300,8 @@ def overlap_squares_center(rng: random.Random) -> Puzzle:
         recipe="overlap_squares_center",
         question=(
             f"Two squares of side {a} cm overlap: a corner of one lies exactly at "
-            "the center of the other. Find the shaded overlap area."
+            "the center of the other, and their corresponding sides are parallel. "
+            "Find the shaded overlap area."
         ),
         scene=S,
         target=Target("area", region=region),
@@ -422,8 +423,8 @@ def leaf_lens(rng: random.Random) -> Puzzle:
     # two quarter-circle arcs across the square, lens between them
     q1 = S.quarter_circle_at_corner("Q1", sq, corner=0)  # center A, through B and D
     q2 = S.quarter_circle_at_corner("Q2", sq, corner=2)  # center C, through B and D
-    seg1 = S.segment_between("L1", A, a, 0, sp.pi / 2)
-    seg2 = S.segment_between("L2", C, a, sp.pi, 3 * sp.pi / 2)
+    seg1 = S.segment_between("L1", A, a, 0, sp.pi / 2, visible=False)
+    seg2 = S.segment_between("L2", C, a, sp.pi, 3 * sp.pi / 2, visible=False)
     region = Region.union(seg1, seg2)
     half = sp.Rational(a * a, 2)
     quarter = sp.Rational(a * a, 4)
@@ -448,6 +449,7 @@ def leaf_lens(rng: random.Random) -> Puzzle:
         width=2,
         nonstandard=True,
         params={"a": a},
+        equal_region_claims=[(region, Region.inter(q1, q2))],
     )
 
 
@@ -580,6 +582,111 @@ def square_plus_semicircle(rng: random.Random) -> Puzzle:
         width=2,
         nonstandard=True,
         params={"a": a},
+    )
+
+
+# ============================================================ insight families
+
+
+@recipe("sliding_triangle", 2)
+def sliding_triangle(rng: random.Random) -> Puzzle:
+    w = rng.randint(6, 12)
+    h = rng.randint(4, 8)
+    x = sp.Rational(rng.choice([2, 3, 7, 8]), 10) * w
+    S = Scene()
+    S.place_rect("ABCD", w, h)
+    triangle = S.place_triangle("ABP", [(0, 0), (w, 0), (x, h)])
+    area = w * h
+    return Puzzle(
+        recipe="sliding_triangle",
+        question=(
+            f"The rectangle has area {area} cm². The shaded triangle uses the "
+            "whole bottom side as its base, and its third vertex lies on the "
+            "top side. Find the shaded area."
+        ),
+        scene=S,
+        target=Target("area", region=Region.prim(triangle)),
+        givens=[Given(label=f"rectangle area = {area} cm²", kind="text", p1=P(w / sp.Integer(2), h * sp.Rational(6, 5)))],
+        solution_steps=[
+            "Let the rectangle's width and height be b and h. Its area is b × h.",
+            "The triangle has the same base b and perpendicular height h, wherever its top vertex sits.",
+            f"Triangle area = ½ × b × h = ½ × {area} = {_num(sp.Rational(area, 2))} cm².",
+        ],
+        depth=2,
+        params={"w": w, "h": h, "x": x, "rectangle_area": area},
+    )
+
+
+@recipe("tangent_chord_annulus", 3)
+def tangent_chord_annulus(rng: random.Random) -> Puzzle:
+    r = rng.randint(2, 6)
+    half = rng.randint(3, 7)
+    R = sp.sqrt(r * r + half * half)
+    S = Scene()
+    outer = S.place_circle("O", (0, 0), R)
+    inner = S.place_circle("I", (0, 0), r)
+    A, B = P(-half, r), P(half, r)
+    S.add_line(A, B)
+    return Puzzle(
+        recipe="tangent_chord_annulus",
+        question=(
+            f"The two circles have the same center. The {2*half} cm segment "
+            "has both endpoints on the outer circle and is tangent to the "
+            "inner circle (it just touches it). Find the shaded area between the circles."
+        ),
+        scene=S,
+        target=Target("area", region=Region.diff(outer, inner)),
+        givens=[_side(f"{2*half} cm", A, B)],
+        solution_steps=[
+            "Join the common center to the touching point and to either endpoint of the segment.",
+            f"A radius is perpendicular to a tangent. The perpendicular from a circle's center bisects a chord, so half the segment is {half} cm.",
+            f"If the radii are R and r, Pythagoras gives R² = r² + {half}², hence R² − r² = {half*half}.",
+            f"Ring area = πR² − πr² = π(R² − r²) = {half*half}π cm². Neither radius is needed separately.",
+        ],
+        depth=3,
+        width=2,
+        params={"r": r, "R": R, "half_chord": half, "chord": 2 * half},
+    )
+
+
+@recipe("rotated_square_overlap", 3)
+def rotated_square_overlap(rng: random.Random) -> Puzzle:
+    a = rng.randrange(4, 14, 2)
+    angle = rng.choice([sp.pi / 12, sp.pi / 6, sp.pi / 5])
+    S = Scene()
+    fixed = S.place_square("ABCD", a)
+    center = P(sp.Rational(a, 2), sp.Rational(a, 2))
+    turned = S.place_rotated_square("EFGH", a, center, angle)
+    half = sp.Rational(a, 2)
+    # For the sampled angles (strictly between 0 and 45 degrees), the two
+    # rays hit the right and top edges. This polygon is independently
+    # checked against the true intersection of the two squares.
+    offset = sp.simplify(half * sp.tan(angle))
+    overlap = Polygon(name="overlap", pts=(
+        center, P(a, half + offset), P(a, a), P(half - offset, a),
+    ))
+    region = Region.prim(overlap)
+    return Puzzle(
+        recipe="rotated_square_overlap",
+        question=(
+            f"Both squares have side {a} cm. A corner of the tilted square "
+            "lies exactly at the center of the other square. Find their shaded "
+            "overlap area. The angle of rotation is not given."
+        ),
+        scene=S,
+        target=Target("area", region=region),
+        givens=[_side(f"{a} cm", fixed.pts[0], fixed.pts[1])],
+        solution_steps=[
+            "Extend the two sides through the central corner into full perpendicular lines.",
+            "A 90° rotation about the fixed square's center maps the square to itself and each of the four sectors to the next. All four pieces have equal area.",
+            f"Every point in the fixed square is at most {a}/√2 cm from its center, less than {a} cm. The tilted square's far sides cannot cut off any of its sector.",
+            f"The overlap is one of the four equal pieces: {a}²/4 = {a*a//4} cm², regardless of the rotation.",
+        ],
+        depth=3,
+        width=4,
+        nonstandard=True,
+        params={"a": a, "angle": angle},
+        equal_region_claims=[(region, Region.inter(fixed, turned))],
     )
 
 

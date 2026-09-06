@@ -1,0 +1,107 @@
+"""Export a pilot as plain files for emilesilvis.com's apps/ directory."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+from html import escape
+import json
+from pathlib import Path
+import re
+import shutil
+import tempfile
+
+ROOT = Path(__file__).resolve().parent
+ASSETS = ("styles.css", "theme.js", "app.js", "answer.js")
+
+
+def page_name(day: int) -> str:
+    return "index.html" if day == 1 else f"day-{day:02d}.html"
+
+
+def edition_identity(manifest: dict) -> str:
+    # Labels are annotations, not changes to a puzzle. Ignore them in the
+    # existing content hash to preserve saved answers for already published weeks.
+    content = json.loads(json.dumps(manifest))
+    for puzzle in content["sessions"]:
+        for item in (puzzle, puzzle.get("warmup")):
+            if item:
+                item.get("difficulty", {}).pop("label", None)
+    return hashlib.sha256(json.dumps(content, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:16]
+
+
+def build(edition: Path, output: Path) -> Path:
+    edition, output = edition.resolve(), output.resolve()
+    if ROOT.is_relative_to(output) or edition.is_relative_to(output):
+        raise ValueError("The output must not contain the reader source or edition.")
+    if output.exists() and any(output.iterdir()) and not (output / ".geomake-build").is_file():
+        raise ValueError("Choose an empty output folder; this one is not a generated reader.")
+    manifest = json.loads(edition.read_text(encoding="utf-8"))
+    puzzles = manifest["sessions"]
+    if not puzzles or [p["day"] for p in puzzles] != list(range(1, len(puzzles) + 1)):
+        raise ValueError("An edition must have consecutive days starting at 1.")
+    for puzzle in puzzles:
+        if puzzle.get("difficulty", {}).get("label") not in {"Easy", "Medium", "Hard"}:
+            raise ValueError("Each puzzle needs an estimated difficulty label; export it with the current generator.")
+    edition_id = edition_identity(manifest)
+    asset_id = hashlib.sha256(b"".join((ROOT / name).read_bytes() for name in ASSETS)).hexdigest()[:12]
+    template = (ROOT / "template.html").read_text(encoding="utf-8")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="geomake-build-", dir=output.parent) as temporary:
+        staged = Path(temporary) / "site"
+        staged.mkdir()
+        (staged / "images").mkdir()
+        for name in ASSETS:
+            content = (ROOT / name).read_text(encoding="utf-8")
+            if name == "app.js":
+                content = content.replace("'./answer.js'", f"'./answer.js?v={asset_id}'")
+            (staged / name).write_text(content, encoding="utf-8")
+        for puzzle in puzzles:
+            day = puzzle["day"]
+            image = (edition.parent / puzzle["image"]).resolve()
+            if not image.is_relative_to(edition.parent):
+                raise ValueError("Puzzle images must be inside the edition folder.")
+            image_path = f"images/day-{day:02d}{image.suffix}"
+            shutil.copyfile(image, staged / image_path)
+            help_path = f"data/{edition_id}/day-{day:02d}"
+            help_dir = staged / help_path
+            help_dir.mkdir(parents=True)
+            payloads = {
+                "check": puzzle["answer"]["float"],
+                "solution": {"answer": puzzle["answer"]["display"], "steps": puzzle["solution_steps"]},
+                **{f"hint-{level}": hint for level, hint in enumerate(puzzle["hints"], 1)},
+            }
+            for name, value in payloads.items():
+                (help_dir / f"{name}.json").write_text(json.dumps(value, ensure_ascii=False, allow_nan=False) + "\n", encoding="utf-8")
+            unit = puzzle["unit"]
+            if puzzle["target_kind"] == "area":
+                unit += "²"
+            fields = {key: escape(str(value), quote=True) for key, value in {
+                "day": day, "edition": edition_id, "assets": asset_id,
+                "question": puzzle["question"], "image": image_path,
+                "alt": puzzle["question"], "help": help_path,
+                "unit": unit, "hint_count": len(puzzle["hints"]),
+                "difficulty": puzzle["difficulty"]["label"],
+            }.items()}
+            fields["previous"] = f'<a href="{page_name(day - 1)}" rel="prev">← Previous</a>' if day > 1 else '<span></span>'
+            fields["next"] = f'<a href="{page_name(day + 1)}" rel="next">Next →</a>' if day < len(puzzles) else '<span></span>'
+            fields["archive"] = "".join(
+                f'<li><a href="{page_name(item["day"])}"'
+                + (' aria-current="page"' if item["day"] == day else '')
+                + f'>Puzzle {item["day"]}</a> <span class="archive-difficulty">· {escape(item["difficulty"]["label"])} (estimated)</span></li>'
+                for item in puzzles
+            )
+            html = re.sub(r"\{\{(\w+)\}\}", lambda match: fields[match[1]], template)
+            (staged / page_name(day)).write_text(html, encoding="utf-8")
+        (staged / ".geomake-build").write_text(edition_id + "\n", encoding="utf-8")
+        if output.exists():
+            shutil.rmtree(output)
+        staged.rename(output)
+    return output
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--edition", type=Path, default=ROOT.parent / "out/daily-pilot/editor.json")
+    parser.add_argument("--out", type=Path, default=ROOT / "dist")
+    args = parser.parse_args()
+    print(build(args.edition, args.out))

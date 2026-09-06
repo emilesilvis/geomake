@@ -21,7 +21,8 @@ QMARK = "#c1121f"
 
 def _fill(ax, shape, color, z):
     ax.add_patch(
-        patches.Polygon(shape.boundary(512), closed=True, facecolor=color, edgecolor="none", zorder=z)
+        patches.Polygon(shape.boundary(512), closed=True, facecolor=color,
+                        edgecolor="none", antialiased=False, zorder=z)
     )
 
 
@@ -52,7 +53,15 @@ def _rep_point(region):
         from .verify import HAVE_SHAPELY, _region_to_shapely
 
         if HAVE_SHAPELY:
-            p = _region_to_shapely(region).representative_point()
+            from shapely.ops import polylabel
+
+            geometry = _region_to_shapely(region)
+            if geometry.geom_type == "MultiPolygon":
+                geometry = max(geometry.geoms, key=lambda part: part.area)
+            x0, y0, x1, y1 = geometry.bounds
+            # A merely interior point can lie in a sliver too narrow for the
+            # label. Maximize clearance from the boundary, including holes.
+            p = polylabel(geometry, tolerance=max(x1 - x0, y1 - y0) / 256)
             return (p.x, p.y)
     except Exception:
         pass
@@ -66,7 +75,24 @@ def _rep_point(region):
         y = y0 + rng.random() * (y1 - y0)
         if region.contains_pt(x, y):
             hits.append((x, y))
-    return (sum(h[0] for h in hits) / len(hits), sum(h[1] for h in hits) / len(hits))
+    # Averaging interior points can land in a hole or between disconnected
+    # pieces. Choose an actual hit with room around it instead.
+    edges = []
+    for shape in region.primitives():
+        points = shape.boundary(64)
+        edges.extend(zip(points, points[1:] + points[:1]))
+
+    def clearance(point):
+        px, py = point
+        distances = []
+        for (ax, ay), (bx, by) in edges:
+            dx, dy = bx - ax, by - ay
+            length2 = dx * dx + dy * dy
+            t = max(0, min(1, ((px - ax) * dx + (py - ay) * dy) / length2)) if length2 else 0
+            distances.append((px - ax - t * dx)**2 + (py - ay - t * dy)**2)
+        return min(distances)
+
+    return max(hits, key=clearance)
 
 
 def _side_label(ax, given, center, scale):
@@ -106,7 +132,7 @@ def _angle_arc(ax, vertex, p1, p2, label, scale, color=LINE):
     )
 
 
-def render(puzzle: Puzzle, path: str, show_answer: bool = False):
+def render(puzzle: Puzzle, path: str, show_answer: bool = False, *, show_difficulty: bool = True):
     x0, y0, x1, y1 = _scene_bbox(puzzle)
     scale = max(x1 - x0, y1 - y0)
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
@@ -121,9 +147,11 @@ def render(puzzle: Puzzle, path: str, show_answer: bool = False):
         for shape, positive in t.region.shaded_pieces():
             _fill(ax, shape, SHADE if positive else BG, z=2 if positive else 3)
 
-    # outlines of every constructed shape, then aux lines
+    # Construction helpers can define the answer without revealing a solution
+    # line in the question (e.g. the chord splitting a leaf into segments).
     for s in puzzle.scene.shapes.values():
-        _outline(ax, s)
+        if s.name not in puzzle.scene.hidden_shapes:
+            _outline(ax, s)
     for p1, p2, style in puzzle.scene.lines:
         (ax1, ay1), (ax2, ay2) = pfloat(p1), pfloat(p2)
         ax.plot(
@@ -168,6 +196,9 @@ def render(puzzle: Puzzle, path: str, show_answer: bool = False):
 
     if show_answer:
         ax.set_title(puzzle.answer_display(), fontsize=12, color=LINE)
+    if show_difficulty:
+        ax.text(0.5, -0.035, f"Estimated difficulty: {puzzle.difficulty_label}",
+                transform=ax.transAxes, ha="center", va="top", fontsize=10, color="#666666")
 
     pad = 0.16 * scale
     ax.set_xlim(x0 - pad, x1 + pad)

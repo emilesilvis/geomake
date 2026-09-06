@@ -1,0 +1,490 @@
+/* style.css — drop in root folder, build.py will copy it to /out */
+
+/* Base styles and variables */
+:root {
+  --body-font: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --max-width: 60ch;              /* keep line-length comfortable */
+  --accent: #0069ff;
+
+  /* Light mode colors */
+  --bg-color: #fff;
+  --text-color: #222;
+  --text-muted: #666;
+  --text-lighter: #777;
+  --border-color: #eee;
+  --code-bg: #f5f5f5;
+  --bio-bg: #f8f8f8;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode colors */
+[data-theme="dark"] {
+  --bg-color: #0f0f0f;
+  --text-color: #e4e4e4;
+  --text-muted: #a0a0a0;
+  --text-lighter: #888;
+  --border-color: #333;
+  --code-bg: #1a1a1a;
+  --bio-bg: #1a1a1a;
+  --shadow-color: rgba(255, 255, 255, 0.1);
+  --accent: #4a9eff;
+}
+
+/* Dark mode toggle button */
+.theme-toggle {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  background: var(--bio-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: all 0.2s ease;
+  z-index: 1000;
+  box-shadow: 0 2px 8px var(--shadow-color);
+}
+
+.theme-toggle:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px var(--shadow-color);
+}
+
+.theme-toggle:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Reset and base styles */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 20px;                /* bigger default (≈ 113 % of 16 px) */
+}
+
+body {
+  margin: 0;
+  font-family: var(--body-font);
+  line-height: 1.6;
+  color: var(--text-color);
+  background: var(--bg-color);
+  padding: 2rem;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Typography */
+h1, h2, h3, h4 {
+  line-height: 1.3;
+  margin: 1.5rem 0 1rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.post-date {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: -0.5rem 0 2rem;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* Layout */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr; /* Default to single column */
+  grid-template-areas: /* Define areas for mobile */
+      "bio"
+      "main";
+  gap: 2rem; /* Adjusted gap for mobile */
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem; /* Add padding for mobile */
+}
+
+.main-content {
+  grid-area: main; /* Assign to main area */
+  max-width: var(--max-width);
+}
+
+/* Navigation */
+nav {
+  margin-bottom: 2rem;
+}
+
+nav a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.main-nav {
+  margin: 0.5rem 0 0;
+}
+
+.main-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.main-nav li {
+  line-height: 1.4;
+}
+
+.main-nav a {
+  font-size: 0.9rem;
+}
+
+.main-nav a:hover {
+  text-decoration: underline;
+}
+
+/* Code blocks */
+code, pre {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  background: var(--code-bg);
+  color: var(--text-color);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+pre {
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+/* Tables */
+table {
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+th, td {
+  border: 1px solid var(--border-color);
+  padding: 0.3rem 0.75rem;
+  text-align: left;
+}
+
+th {
+  background: var(--code-bg);
+}
+
+/* Bio section */
+.bio-section {
+    grid-area: bio; /* Assign to bio area for mobile */
+    /* position: sticky; REMOVE from base */
+    top: 2rem; /* Keep for when sticky is re-added */
+    height: fit-content;
+    padding: 1.5rem;
+    background: var(--bio-bg);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    text-align: center;
+    transition: background-color 0.2s ease;
+    border: 1px solid var(--border-color);
+}
+
+/* Avatar is wrapped in a homepage link for the h-card's u-url/u-uid; keep it
+   block-level and centered so the circular photo sits exactly as before. */
+.bio-image-link {
+    display: block;
+    width: 120px;
+    margin: 0 auto;
+}
+
+.bio-image {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin: 0 auto 1rem;
+    display: block;
+}
+
+.bio-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.bio-section hr {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 1rem 0 0.5rem;
+}
+
+/* Social links */
+.social-links {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+    justify-content: center;
+}
+
+.social-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    color: var(--accent);
+    transition: opacity 0.2s ease;
+}
+
+.social-link:hover {
+    opacity: 0.8;
+}
+
+.social-icon {
+    width: 100%;
+    height: 100%;
+}
+
+/* In dark mode the monochrome (black) icons are invisible on the dark
+   background. They're loaded as <img>, so flip them to white with a filter. */
+[data-theme="dark"] .social-icon {
+    filter: invert(1);
+}
+
+/* Content wrapper and sidebar */
+.content-wrapper {
+    display: grid;
+    grid-template-columns: 1fr; /* Default to single column */
+    gap: 1.5rem; /* Adjusted gap */
+    margin-top: 2rem;
+}
+
+.sidebar {
+    position: sticky;
+    top: 2rem;
+    height: fit-content;
+}
+
+.sidebar .pages {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar .pages li {
+    margin-bottom: 0.5rem;
+}
+
+.sidebar .pages a {
+    color: var(--accent);
+    font-size: 0.9rem;
+}
+
+.sidebar .pages a:hover {
+    text-decoration: underline;
+}
+
+/* Pangram human-writing verification */
+.pangram-verification {
+    margin: 3rem 0 0;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.pangram-verification__link {
+    color: var(--text-muted);
+}
+
+.pangram-verification__check {
+    margin-right: 0.2rem;
+    color: var(--text-color);
+}
+
+.pangram-verification strong {
+    color: var(--text-color);
+}
+
+.pangram-verification__source {
+    color: var(--accent);
+}
+
+/* Footer */
+footer {
+    margin-top: 3rem;
+    font-size: 0.9rem;
+    color: var(--text-lighter);
+    text-align: center;
+    border-top: 1px solid var(--border-color);
+    padding-top: 1rem;
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+/* IndieWeb webring navigation */
+.webring {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: var(--text-lighter);
+    text-align: center;
+}
+
+.webring a {
+    color: var(--accent);
+}
+
+/* Accessibility */
+a:focus,
+button:focus,
+input:focus,
+select:focus,
+textarea:focus,
+[tabindex]:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.25);
+}
+
+/* Dark mode syntax highlighting */
+[data-theme="dark"] .codehilite .k { color: #ff79c6; font-weight: bold } /* Keyword */
+[data-theme="dark"] .codehilite .s { color: #f1fa8c } /* String */
+[data-theme="dark"] .codehilite .c { color: #6272a4; font-style: italic } /* Comment */
+[data-theme="dark"] .codehilite .n { color: #f8f8f2 } /* Name */
+[data-theme="dark"] .codehilite .o { color: #ff79c6 } /* Operator */
+[data-theme="dark"] .codehilite .p { color: #f8f8f2 } /* Punctuation */
+[data-theme="dark"] .codehilite .ch { color: #6272a4; font-style: italic } /* Comment.Hashbang */
+[data-theme="dark"] .codehilite .cm { color: #6272a4; font-style: italic } /* Comment.Multiline */
+[data-theme="dark"] .codehilite .cp { color: #ff79c6 } /* Comment.Preproc */
+[data-theme="dark"] .codehilite .c1 { color: #6272a4; font-style: italic } /* Comment.Single */
+[data-theme="dark"] .codehilite .cs { color: #6272a4; background-color: #44475a } /* Comment.Special */
+[data-theme="dark"] .codehilite .kc { color: #ff79c6; font-weight: bold } /* Keyword.Constant */
+[data-theme="dark"] .codehilite .kd { color: #ff79c6; font-weight: bold } /* Keyword.Declaration */
+
+/* Light mode syntax highlighting */
+.codehilite .k { color: #007020; font-weight: bold } /* Keyword */
+.codehilite .s { color: #4070a0 } /* String */
+.codehilite .c { color: #60a0b0; font-style: italic } /* Comment */
+.codehilite .n { color: #007020 } /* Name */
+.codehilite .o { color: #666666 } /* Operator */
+.codehilite .p { color: #666666 } /* Punctuation */
+.codehilite .ch { color: #60a0b0; font-style: italic } /* Comment.Hashbang */
+.codehilite .cm { color: #60a0b0; font-style: italic } /* Comment.Multiline */
+.codehilite .cp { color: #007020 } /* Comment.Preproc */
+.codehilite .c1 { color: #60a0b0; font-style: italic } /* Comment.Single */
+.codehilite .cs { color: #60a0b0; background-color: #fff0f0 } /* Comment.Special */
+.codehilite .kc { color: #007020; font-weight: bold } /* Keyword.Constant */
+.codehilite .kd { color: #007020; font-weight: bold } /* Keyword.Declaration */
+
+/* Media Queries */
+@media (min-width: 768px) {
+    .layout {
+        grid-template-columns: 1fr 300px;
+        grid-template-areas: /* Define areas for desktop */
+            "main aside";
+        gap: 3rem;
+        padding: 2rem; /* Restore original padding */
+    }
+
+    .bio-section {
+        grid-area: aside; /* Assign to aside area for desktop */
+        position: sticky; /* Apply sticky only for desktop */
+    }
+
+    .content-wrapper {
+        grid-template-columns: 1fr 200px;
+        gap: 2rem;
+    }
+
+    .main-nav ul {
+        gap: 1.5rem; /* Restore original gap */
+    }
+}
+
+/* Add responsive image styles */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* TownSquare presence widget — theming bridge (self-contained variables) */
+#townsquare-root {
+  margin: 2rem auto 0;
+}
+
+#townsquare-root#townsquare-root {
+  --scene: transparent;
+  --page: #efede9;
+  --surface: #fdf8f4;
+  --ink: #2a2926;
+  --you: #c8641f;
+  --tree-trunk: color-mix(in oklab, var(--text) 58%, var(--muted) 42%);
+  --tree-canopy: color-mix(in oklab, var(--text) 58%, var(--muted) 42%);
+  --other: #26241f;
+  --ground: rgba(42, 41, 38, 0.16);
+  --scene-edge: color-mix(in oklab, var(--scene) 88%, var(--page) 12%);
+  --you-deep: var(--you);
+  --text: var(--ink);
+  --muted: var(--ink);
+}
+#townsquare-root#townsquare-root[data-townsquare-theme="dark"] {
+  --scene: #242521;
+  --page: #181917;
+  --surface: #24231f;
+  --ink: #f2eee6;
+  --you: #df8a43;
+  --tree-trunk: color-mix(in oklab, var(--text) 58%, var(--muted) 42%);
+  --tree-canopy: color-mix(in oklab, var(--text) 58%, var(--muted) 42%);
+  --other: #ddd7cc;
+  --ground: rgba(242, 238, 230, 0.18);
+  --scene-edge: color-mix(in oklab, var(--scene) 88%, var(--page) 12%);
+  --you-deep: var(--you);
+  --text: var(--ink);
+  --muted: var(--ink);
+}
+@media (prefers-color-scheme: dark) {
+  #townsquare-root#townsquare-root:is(:not([data-townsquare-theme]), [data-townsquare-theme="auto"]) {
+  --scene: #242521;
+  --page: #181917;
+  --surface: #24231f;
+  --ink: #f2eee6;
+  --you: #df8a43;
+  --tree-trunk: color-mix(in oklab, var(--text) 58%, var(--muted) 42%);
+  --tree-canopy: color-mix(in oklab, var(--text) 58%, var(--muted) 42%);
+  --other: #ddd7cc;
+  --ground: rgba(242, 238, 230, 0.18);
+  --scene-edge: color-mix(in oklab, var(--scene) 88%, var(--page) 12%);
+  --you-deep: var(--you);
+  --text: var(--ink);
+  --muted: var(--ink);
+  }
+}
+#townsquare-root#townsquare-root .townsquare__stage {
+  background: linear-gradient(
+    180deg,
+    var(--scene) 0%,
+    var(--scene) 72%,
+    var(--scene-edge) 72%,
+    var(--page) 72.4%,
+    var(--page) 100%
+  );
+}
+#townsquare-root#townsquare-root .townsquare__ground {
+  background: var(--ground);
+}
+
+/* TownSquare's tokens.css declares `:root { --accent: var(--you) }` (terracotta) and
+   loads after this stylesheet, so on equal specificity it would win the cascade and
+   recolor every link/nav/accent orange. Reassert the brand blue at higher specificity
+   (html:root beats a bare :root) so it always wins regardless of load order. */
+html:root { --accent: #0069ff; }
+html:root[data-theme="dark"] { --accent: #4a9eff; }
