@@ -43,7 +43,10 @@ The fuller reader originally proposed below is a possible future direction. The
 current user preference is a spartan page matching emilesilvis.com, hosted by
 its existing GitHub Pages setup. The implemented static reader keeps only the
 puzzle, answer check, progressive hints, explanation, previous/next links and
-a collapsed list for returning to any puzzle.
+a collapsed list for returning to unlocked puzzles. A correct answer unlocks
+the next puzzle; later pages stay locked even when opened directly. Completion
+is remembered in the current browser, while hints and solutions remain available
+on the current puzzle.
 It shares the site's stylesheet and theme preference, with no branding,
 account requirement, feedback dashboard or synchronized notebook.
 
