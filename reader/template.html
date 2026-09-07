@@ -10,35 +10,39 @@
   <script type="module" src="app.js?v={{assets}}"></script>
 </head>
 <body>
-  <main data-edition="{{edition}}" data-day="{{day}}" data-help="{{help}}" data-hints="{{hint_count}}">
+  <main data-edition="{{edition}}" data-day="{{day}}" data-total="{{total}}" data-help="{{help}}" data-hints="{{hint_count}}">
     <nav class="puzzle-nav" aria-label="Puzzles">
       {{previous}}
       <h1>Puzzle {{day}}</h1>
       {{next}}
     </nav>
-    <p class="difficulty">Estimated difficulty: {{difficulty}}</p>
-    <p id="question">{{question}}</p>
-    <img class="diagram" src="{{image}}" alt="{{alt}}" width="676" height="676">
-    <form id="answer-form">
-      <label for="answer">Answer <span class="unit">({{unit}})</span></label>
-      <div class="answer-row">
-        <input id="answer" name="answer" type="text" maxlength="160" autocomplete="off" spellcheck="false" aria-describedby="answer-format">
-        <button id="check" type="submit">Check</button>
+    <p id="locked" role="status"{{lock_hidden}}>Solve <a id="resume" href="index.html">Puzzle 1</a> to unlock this puzzle.</p>
+    <section id="puzzle" aria-label="Puzzle"{{puzzle_hidden}}>
+      <p class="difficulty">Estimated difficulty: {{difficulty}}</p>
+      <p id="question">{{question}}</p>
+      <img class="diagram" src="{{image}}" alt="{{alt}}" width="676" height="676">
+      <form id="answer-form">
+        <label for="answer">Answer <span class="unit">({{unit}})</span></label>
+        <div class="answer-row">
+          <input id="answer" name="answer" type="text" maxlength="160" autocomplete="off" spellcheck="false" aria-describedby="answer-format">
+          <button id="check" type="submit">Check</button>
+        </div>
+        <small id="answer-format">Use π, fractions, or sqrt(2). Decimals to two places are fine.</small>
+      </form>
+      <p id="feedback" role="status" hidden></p>
+      <p id="progress" class="progress-note">{{progress}}</p>
+      <div class="help-actions">
+        <button id="hint" class="text-button" type="button">Hint</button>
+        <button id="explain" class="text-button" type="button" aria-expanded="false" aria-controls="solution">Solution</button>
       </div>
-      <small id="answer-format">Use π, fractions, or sqrt(2). Decimals to two places are fine.</small>
-    </form>
-    <p id="feedback" role="status" hidden></p>
-    <div class="help-actions">
-      <button id="hint" class="text-button" type="button">Hint</button>
-      <button id="explain" class="text-button" type="button" aria-expanded="false" aria-controls="solution">Solution</button>
-    </div>
-    <ol id="hints" aria-live="polite" hidden></ol>
-    <section id="solution" aria-label="Solution" hidden></section>
+      <ol id="hints" aria-live="polite" hidden></ol>
+      <section id="solution" aria-label="Solution" hidden></section>
+    </section>
     <details class="puzzle-list">
       <summary>All puzzles</summary>
       <ol>{{archive}}</ol>
     </details>
-    <noscript><p>Enable JavaScript to check answers or reveal hints.</p></noscript>
+    <noscript><p>Enable JavaScript to check answers, reveal hints, and unlock puzzles.</p></noscript>
   </main>
 </body>
 </html>

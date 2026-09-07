@@ -1,5 +1,6 @@
 """The static reader can be hosted in a subdirectory without exposing solutions in questions."""
 import importlib.util
+from html.parser import HTMLParser
 import json
 from pathlib import Path
 import re
@@ -52,9 +53,42 @@ def test_static_pages_escape_text_and_keep_help_in_separate_files(edition, tmp_p
         assert ('rel="prev"' in html) == (day > 1)
         assert ('rel="next"' in html) == (day < 14)
         if day < 14:
-            assert f'href="{reader.page_name(day + 1)}" rel="next"' in html
+            assert f'data-href="{reader.page_name(day + 1)}" rel="next"' in html
     assert not (output / "host-style.css").exists()
     assert not (output / "editor.json").exists()
+
+
+def test_later_puzzles_and_navigation_start_locked_until_progress_is_restored(edition, tmp_path):
+    class Page(HTMLParser):
+        def __init__(self, html):
+            super().__init__()
+            self.elements = []
+            self.feed(html)
+
+        def handle_starttag(self, tag, attrs):
+            self.elements.append((tag, dict(attrs)))
+
+    output = reader.build(edition, tmp_path / "site")
+    for day in range(1, 15):
+        page = Page((output / reader.page_name(day)).read_text())
+        ids = {attrs["id"]: attrs for _, attrs in page.elements if "id" in attrs}
+        assert ("hidden" in ids["puzzle"]) == (day > 1)
+        assert ("hidden" in ids["locked"]) == (day == 1)
+        assert ids["resume"]["href"] == "index.html"
+        for tag, attrs in page.elements:
+            if tag == "main":
+                assert attrs["data-total"] == "14"
+            if "data-puzzle-day" in attrs:
+                if attrs["data-puzzle-day"] == "1":
+                    assert attrs["href"] == "index.html"
+                else:
+                    assert "href" not in attrs
+                    assert attrs["aria-disabled"] == "true"
+
+    app = (output / "app.js").read_text()
+    for module in ("answer.js", "progress.js"):
+        assert re.search(rf"'{re.escape('./' + module)}\?v=[a-f0-9]+'", app)
+        assert (output / module).is_file()
 
 
 def test_rebuilds_are_stable_and_changed_content_has_new_identity(edition, tmp_path):

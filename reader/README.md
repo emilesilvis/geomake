@@ -5,6 +5,11 @@ framework, account, database, or build dependencies. The page uses the host's
 `/static/css/style.css` and its existing `theme` preference. Only the puzzle,
 answer check, progressive hints, solution, previous/next links and a collapsed
 “All puzzles” list are shown. Every puzzle has a stable, bookmarkable URL.
+Solve them in order: checking a correct answer unlocks the next puzzle. The
+Next link and archive keep later puzzles locked, and opening a locked URL
+shows a link to the first unfinished puzzle. Solved puzzles remain available
+to revisit, even if you change their entered answers. Hints and solutions are
+available on the current puzzle without unlocking the next one.
 
 Pages and archive entries show the generator's estimated difficulty label:
 Easy (depth 1), Medium (depth 2), or Hard (depth 3). The exporter requires a
@@ -41,12 +46,18 @@ a snapshot of that stylesheet for the local preview only, with blank-line
 whitespace normalized (source Git blob `7dd53042746af49f15fb7bf3ea0fe1a0e1439854`).
 It is not included in the export.
 
-The statement and diagram work without JavaScript. Hints and explanations are
+The first statement and diagram work without JavaScript; checking answers and
+unlocking later puzzles requires it. Hints and explanations are
 fetched only on request; an answer check fetches just the numeric answer.
 These are public static files, so a visitor who inspects them can read answers.
-Entered answers are remembered only in that browser, using a namespaced
-localStorage key. They are never uploaded; this reader does not synchronize
-devices or maintain player accounts. Browser storage is optional for solving.
+Entered answers and completed puzzles are remembered only in that browser,
+using edition-scoped localStorage keys. When persistent storage is unavailable,
+sessionStorage preserves them for the current tab. If both are blocked, answers
+can still be checked, but browser storage must be allowed to unlock more puzzles.
+Existing saved answers are restored; check them once to record completion.
+Progress is never uploaded; this reader does not synchronize devices or maintain
+player accounts. The gate guides normal navigation; the public static files
+and browser-stored progress can be inspected or modified.
 
 The two-week pack remains self-paced. There is no calendar lock or automatic supply of
 future weeks. The fuller warm-ups, extensions and discussion prompts remain in

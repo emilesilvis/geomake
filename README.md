@@ -61,7 +61,9 @@ progression; changing the edition seed supplies variations of the same ideas. Th
 [static reader](reader/README.md) shows the question, answer check, progressive
 hints, solution, previous/next links and a collapsed list of all puzzles. It uses emilesilvis.com's stylesheet
 and existing GitHub Pages hosting, and remembers entered answers in the current
-browser. It does not schedule future days or synchronize player progress.
+browser. Correct answers unlock puzzles in order; the Next link, archive, and
+direct puzzle URLs follow the same saved progress. It does not schedule future
+days or synchronize player progress.
 
 See the [daily-tool design and build sequence](docs/daily-puzzle-tool.md) and
 the [primary-source research](docs/puzzle-design-research.md). The design

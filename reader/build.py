@@ -11,11 +11,22 @@ import shutil
 import tempfile
 
 ROOT = Path(__file__).resolve().parent
-ASSETS = ("styles.css", "theme.js", "app.js", "answer.js")
+ASSETS = ("styles.css", "theme.js", "app.js", "answer.js", "progress.js")
 
 
 def page_name(day: int) -> str:
     return "index.html" if day == 1 else f"day-{day:02d}.html"
+
+
+def puzzle_link(day: int, label: str, *, rel: str = "", current: bool = False) -> str:
+    # Only Puzzle 1 is available before JavaScript restores completion.
+    attributes = f'href="{page_name(day)}"' if day == 1 else 'role="link" aria-disabled="true"'
+    attributes += f' data-puzzle-day="{day}" data-href="{page_name(day)}"'
+    if rel:
+        attributes += f' rel="{rel}"'
+    if current:
+        attributes += ' aria-current="page"'
+    return f'<a {attributes}>{escape(label)}</a>'
 
 
 def edition_identity(manifest: dict) -> str:
@@ -53,7 +64,8 @@ def build(edition: Path, output: Path) -> Path:
         for name in ASSETS:
             content = (ROOT / name).read_text(encoding="utf-8")
             if name == "app.js":
-                content = content.replace("'./answer.js'", f"'./answer.js?v={asset_id}'")
+                for module in ("answer.js", "progress.js"):
+                    content = content.replace(f"'./{module}'", f"'./{module}?v={asset_id}'")
             (staged / name).write_text(content, encoding="utf-8")
         for puzzle in puzzles:
             day = puzzle["day"]
@@ -76,18 +88,21 @@ def build(edition: Path, output: Path) -> Path:
             if puzzle["target_kind"] == "area":
                 unit += "²"
             fields = {key: escape(str(value), quote=True) for key, value in {
-                "day": day, "edition": edition_id, "assets": asset_id,
+                "day": day, "total": len(puzzles), "edition": edition_id, "assets": asset_id,
                 "question": puzzle["question"], "image": image_path,
                 "alt": puzzle["question"], "help": help_path,
                 "unit": unit, "hint_count": len(puzzle["hints"]),
                 "difficulty": puzzle["difficulty"]["label"],
             }.items()}
-            fields["previous"] = f'<a href="{page_name(day - 1)}" rel="prev">← Previous</a>' if day > 1 else '<span></span>'
-            fields["next"] = f'<a href="{page_name(day + 1)}" rel="next">Next →</a>' if day < len(puzzles) else '<span></span>'
+            fields["previous"] = puzzle_link(day - 1, "← Previous", rel="prev") if day > 1 else '<span></span>'
+            fields["next"] = puzzle_link(day + 1, "Next →", rel="next") if day < len(puzzles) else '<span></span>'
+            fields["puzzle_hidden"] = ' hidden' if day > 1 else ''
+            fields["lock_hidden"] = ' hidden' if day == 1 else ''
+            fields["progress"] = f"Enter the correct answer to unlock Puzzle {day + 1}." if day < len(puzzles) else "Solve this puzzle to complete the set."
             fields["archive"] = "".join(
-                f'<li><a href="{page_name(item["day"])}"'
-                + (' aria-current="page"' if item["day"] == day else '')
-                + f'>Puzzle {item["day"]}</a> <span class="archive-difficulty">· {escape(item["difficulty"]["label"])} (estimated)</span></li>'
+                '<li>' + puzzle_link(item["day"], f'Puzzle {item["day"]}', current=item["day"] == day)
+                + f' <span class="archive-difficulty">· {escape(item["difficulty"]["label"])} (estimated)</span>'
+                + f'<span class="puzzle-state" data-state-day="{item["day"]}">{" · Locked" if item["day"] > 1 else ""}</span></li>'
                 for item in puzzles
             )
             html = re.sub(r"\{\{(\w+)\}\}", lambda match: fields[match[1]], template)
