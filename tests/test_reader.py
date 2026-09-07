@@ -20,9 +20,9 @@ def edition(tmp_path):
     records = [{
         "day": day, "question": 'A < B & "C". Find the area.', "image": "diagram.png",
         "unit": "cm", "target_kind": "area", "answer": {"float": 40, "display": "40 cm²"},
-        "difficulty": {"depth": day, "label": ("Easy", "Medium", "Hard")[day - 1]},
+        "difficulty": {"depth": (day - 1) % 3 + 1, "label": ("Easy", "Medium", "Hard")[(day - 1) % 3]},
         "solution_steps": ["The secret derivation."], "hints": ["First nudge.", "Second nudge.", "Final nudge."],
-    } for day in range(1, 4)]
+    } for day in range(1, 15)]
     manifest = source / "editor.json"
     manifest.write_text(json.dumps({"sessions": records}))
     return manifest
@@ -30,7 +30,7 @@ def edition(tmp_path):
 
 def test_static_pages_escape_text_and_keep_help_in_separate_files(edition, tmp_path):
     output = reader.build(edition, tmp_path / "site")
-    for day in range(1, 4):
+    for day in range(1, 15):
         html = (output / reader.page_name(day)).read_text()
         assert "A &lt; B &amp; &quot;C&quot;" in html
         assert "40 cm²" not in html
@@ -38,7 +38,7 @@ def test_static_pages_escape_text_and_keep_help_in_separate_files(edition, tmp_p
         assert "First nudge" not in html
         assert 'href="/static/css/style.css"' in html
         assert "{{" not in html
-        label = ("Easy", "Medium", "Hard")[day - 1]
+        label = ("Easy", "Medium", "Hard")[(day - 1) % 3]
         assert f'Estimated difficulty: {label}</p>' in html
         for archive_label in ("Easy", "Medium", "Hard"):
             assert f'· {archive_label} (estimated)</span>' in html
@@ -48,6 +48,11 @@ def test_static_pages_escape_text_and_keep_help_in_separate_files(edition, tmp_p
         help_path = re.search(r'data-help="([^"]+)"', html)[1]
         assert json.loads((output / help_path / "check.json").read_text()) == 40
         assert json.loads((output / help_path / "hint-1.json").read_text()) == "First nudge."
+        assert html.count('class="archive-difficulty"') == 14
+        assert ('rel="prev"' in html) == (day > 1)
+        assert ('rel="next"' in html) == (day < 14)
+        if day < 14:
+            assert f'href="{reader.page_name(day + 1)}" rel="next"' in html
     assert not (output / "host-style.css").exists()
     assert not (output / "editor.json").exists()
 

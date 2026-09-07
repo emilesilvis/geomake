@@ -31,7 +31,7 @@ These are ingredients, not a ready-made system that guarantees satisfaction. Lea
 | The original renderer outlined every constructed shape, including both circular segments inside `leaf_lens`. | The answer construction exposed the auxiliary diagonal in the question. | Keep construction helpers available for verification while hiding them from question outlines. This is implemented. |
 | Original question PNGs carried annotations, while essential relationships sometimes lived only in the JSON question. | Passing around an image alone can omit the actual problem statement. | Deliver the statement and diagram together. The trial does this in each day page. |
 
-The existing `generate` and `ladder` commands remain useful for sampling and structural experiments. The new `pilot` command follows an authored sequence; it makes no monotonic-human-difficulty claim.
+The existing `generate` and `ladder` commands remain useful for sampling and structural experiments. The `pilot` command follows an authored sequence. Its original week is retained; the seven-session continuation is required to increase strictly under the existing structural score from Day 7 onward. The conceptual order is explained below, while actual human difficulty still needs playtesting.
 
 ## The daily experience
 
@@ -100,11 +100,58 @@ Open `out/daily-pilot/START_HERE.md`. Share the whole folder, preserving relativ
 | 6 | A ring with only a tangent chord length given | A difference of squares can be determined while both radii remain unknown. | Return to Day 1's unnecessary unknowns, now using Pythagoras. |
 | 7 | Two equal squares overlapping at one square's center | Quarter-turn symmetry makes the rotation angle irrelevant. | Return to invariance through a different kind of argument. |
 
-The new families are `sliding_triangle`, `tangent_chord_annulus`, and `rotated_square_overlap`. The remaining content reuses the existing generator. This is one authored week, not seven days of independently sampled “hard” puzzles.
+The first chapter introduced `sliding_triangle`, `tangent_chord_annulus`, and `rotated_square_overlap`; its other four sessions reused existing recipes. These seven sessions and their seeded questions are preserved when the continuation is added.
 
 The pack is deliberately finite. A new seed changes its numerical edition; it does not create a new curriculum. The command rejects nonempty output folders so regenerating an edition cannot overwrite someone's feedback.
 
-## Why the main puzzles are determined by their public facts
+## The second week: seven harder rungs
+
+Days 8–14 are seven new families, rather than new number seeds for the original
+seven. They continue from Day 7's structural score without a downward step.
+The first rung reverses an area decomposition; each later rung adds a transfer,
+an unknown, or another region to coordinate. All seven fit the existing broad
+Hard label. The generator checks strictly increasing scores from Day 7 onward
+and rejects forward prerequisite references. These checks protect the intended
+order; they do not establish a calibrated human rating.
+
+| Day | Main puzzle | New demand | Builds on |
+| --- | --- | --- | --- |
+| 8 | A tilted inner square with its area and side-division ratios given | Recover the surrounding frame by reversing a four-triangle decomposition, without finding a side. | 4, 7 |
+| 9 | A trapezoid with the top and bottom diagonal-triangle areas given | Take a square root to recover a length ratio, then transfer it through shared heights. | 1, 8 |
+| 10 | Two dividing lines intersect inside a triangle | Move from side divisions to area ratios, to perpendicular heights, to an internal segment ratio. | 9 |
+| 11 | The same sort of intersection with its side division hidden | Recover a third area from two given small areas using a ratio and a second, independent partition equation. | 10 |
+| 12 | A strip between parallel sections through a midpoint and an intersection | Convert the internal ratio to a height measured from the opposite vertex, square the similarity scales, and subtract. | 9, 10, 11 |
+| 13 | Three dividing lines with the same cyclic side ratio | Repeat the intersection argument three times and recognize the complement of the central triangle. | 10, 12 |
+| 14 | Three dividing lines with unequal side ratios | Derive and combine three different corner areas, with no equal-area shortcut. | 11, 12, 13 |
+
+Each addition has an optional warm-up, three separate hints, a complete
+public-fact solution, a comparison prompt and a stretch with its own explanation.
+The pack now contains fourteen main puzzles and thirteen warm-ups. Its seed
+namespace stays fixed so the original seven questions and their answers do not
+change when the manifest version advances to `two-week-ladder-v1`.
+
+For the triangle constructions below, D is on BC, E on CA, P=AD∩BE, and T is
+the area of ABC. With a third dividing line, F is on AB, Q=BE∩CF and R=CF∩AD.
+The apex position and aspect ratio are hidden construction choices. They vary
+across seeds while the same public question retains its answer.
+
+| Family | Public facts → unique target |
+| --- | --- |
+| Tilted-square frame | For side parts px and qx, the four right-triangle corners total 2pqx². Subtracting them from the outer square leaves (p²+q²)x². Given inner area I, the frame is 2pqI/(p²+q²). |
+| Crossed trapezoid | Parallel bases make the top and bottom diagonal triangles similar. If their areas are U and V, their linear ratio is √(U/V). A shared-height comparison then gives each side triangle area √(UV), so the target is 2√(UV). |
+| Crossing dividing lines | BD:DC=t:1 and midpoint E imply area ABD : area ADE = 2t:1. Their common base AD turns this into a height ratio, and similar right triangles along BE give BP:PE=2t:1. ABE has area T/2, so ABP has tT/(2t+1). |
+| Area recovery | Let X=area ABP, Y=area APE, u=area BDP and v=area DPE. Shared heights give u/v=X/Y. Midpoint E gives total area 2(X+Y) and equal areas ADE=CDE=Y+v, hence u+2v=X. Solving gives u=X²/(X+2Y). |
+| Parallel band | With BD:DC=t:1 and midpoint E, P is at height th/(2t+1) above BC. The upper triangle cut by P's parallel therefore has linear scale (t+1)/(2t+1); the parallel through E has scale 1/2. The strip has area T[((t+1)/(2t+1))²−1/4]. |
+| Three equal divisions | With BD:DC=CE:EA=AF:FB=t:1, common-base comparisons give each unshaded corner triangle the fraction t/(t²+t+1). Subtracting the three disjoint corners gives central fraction (t−1)²/(t²+t+1). This cyclic area argument does not assume an equilateral triangle. |
+| Three unequal divisions | With ratios p:1, q:1 and r:1 in that same cyclic order, apply the common-base argument separately. The corner fractions are p/(pq+p+1), q/(qr+q+1) and r/(rp+r+1). Subtract their sum from 1. The displayed solution derives each fraction rather than requiring a memorized theorem. |
+
+The numerical recipe suite checks every new family over 25 seeds. Additional
+checks establish the stated side divisions, parallel sections, intersection
+incidence, given areas, exact public-fact formulas and invariance under hidden
+shape changes. The renderer keeps auxiliary proof lines out of the questions.
+Only the dividing lines and parallels stated in each question are visible.
+
+## Why the first week's main puzzles are determined by their public facts
 
 These are mathematical arguments about the families. The automated checks complement them; they do not replace them with a general solvability proof.
 
@@ -129,7 +176,7 @@ The new regression checks vary hidden configurations while keeping public quanti
 | **3. Sustain the supply** | Author and review a rolling four-week queue. Expand into shared bases/heights, similar triangles, area ratios, angle chasing, tangency, and symmetry, following the pair's preferences. | Every scheduled main puzzle passes the publication checks below. The queue distinguishes new reasoning from intentional replay, and review throughput replenishes a week as a week is consumed. |
 | **4. Improve selection** | Use personal prerequisite observations and puzzle feedback to select common tasks with appropriate support. Include delayed reuse of successful ideas. | Subsequent attempts show that support helps the struggling player and extensions remain interesting to the other. A correct answer alone is not evidence of this. |
 
-The four-week reserve is an operational target, not a claim about the number of ideas needed for enjoyment. The current pack supplies seven main sessions; the remaining queue still needs authoring and playtesting. When a chapter is exhausted, move to a new concept or an explicitly chosen revisit. Resampling a scale parameter should not be silently advertised as a fresh discovery.
+The four-week reserve is an operational target, not a claim about the number of ideas needed for enjoyment. The current pack supplies fourteen main sessions; the remaining queue still needs authoring and playtesting. When a chapter is exhausted, move to a new concept or an explicitly chosen revisit. Resampling a scale parameter should not be silently advertised as a fresh discovery.
 
 ### Reuse and boundaries
 
@@ -149,7 +196,7 @@ For each candidate, verify the exact target against the constructed geometry, ch
 
 Then test the sequence with the actual pair. The direction succeeds when they can reliably access fair puzzles, find a fitting entry, reach insights worth discussing, and want to return over repeated sessions. Neither passing tests nor a polished reader establishes that emotional outcome.
 
-**Current status:** a researched design, an executable content pilot, three new verified families, targeted diagram fixes, and a minimal static reader for emilesilvis.com. Arithmetic parsing and static export are tested, including malformed input, spoiler separation in question pages, subdirectory links and preservation of an existing export after a failed rebuild. The open evidence is the pair's experience. Scheduled delivery and a replenishable reviewed queue remain to be built.
+**Current status:** a researched design, a fourteen-session content pilot, 28 recipe families, targeted diagram fixes, and a minimal static reader for emilesilvis.com. Arithmetic parsing and static export are tested, including malformed input, spoiler separation in question pages, subdirectory links and preservation of an existing export after a failed rebuild. The open evidence is the pair's experience. Scheduled delivery and a replenishable reviewed queue remain to be built.
 
 ### Verification record, 6 September 2026
 
@@ -161,3 +208,10 @@ Then test the sequence with the actual pair. The direction succeeds when they ca
 - `git diff --check` passed. Generated packs are ignored build artifacts and can be reproduced with the documented command into a fresh directory.
 
 These results verify the implementation and the prepared trial, not either player's enjoyment. No paired playtest has yet been observed.
+
+### Continuation verification, 7 September 2026
+
+- Full Python suite: 852 passed, including 25 numerical seeds for each of the seven new families, public-fact derivations, hidden-shape invariance, continuation ordering and fourteen-page export coverage.
+- After the final small-triangle layout adjustment: 75 focused continuation and unequal-division checks passed.
+- JavaScript answer-parser suite: 3 passed. `git diff --check` passed.
+- Generated and built the seed-7 fourteen-session pack. Visually checked all seven new main diagrams, corrected cramped labels and the narrow-strip marker, and verified the answer check, progressive hints, worked solution, archive and Day 7 → Day 8 navigation in the local browser reader.

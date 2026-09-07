@@ -45,6 +45,7 @@ class Target:
     # Optional exact value known by construction (e.g. an angle chosen up
     # front).  The verifier always re-measures the figure independently.
     value: Optional[object] = None
+    marker_size: int = 26  # smaller markers keep narrow shaded strips legible
 
     def exact_value(self):
         if self.value is not None:

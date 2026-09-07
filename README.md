@@ -27,7 +27,7 @@ python3 -m venv .venv
 # graded easy->hard ladder (validated ordering) + answer key in ladder/answers/
 .venv/bin/python -m geomake ladder --n 12 --seed 7 --out ladder
 
-# seven authored daily sessions for two, with optional help and discussion
+# fourteen authored daily sessions for two, with optional help and discussion
 .venv/bin/python -m geomake pilot --seed 7 --out out/daily-pilot
 # Open out/daily-pilot/START_HERE.md; share the whole folder with your partner.
 
@@ -42,17 +42,22 @@ python3 reader/serve.py
 
 ## Toward a daily puzzle tool
 
-`geomake pilot` produces a seven-day content trial: one shared main puzzle per
-day, six optional warm-ups, three separately revealed hints per main puzzle,
+`geomake pilot` produces a fourteen-day content trial: one shared main puzzle per
+day, thirteen optional warm-ups, three separately revealed hints per main puzzle,
 worked explanations, optional extensions, and prompts to compare approaches.
 The question pages include the full statement alongside the diagram. Both
 players should use the same edition seed and preserve the folder structure.
 Output folders must be empty, so generating another edition cannot overwrite
 feedback. The `editor.json` manifest contains spoilers.
 
-This sequence is authored around geometric discoveries, including invariance,
-decomposition, and symmetry. It is a hypothesis to try with real players;
-changing its seed supplies numerical variations of the same week. The
+The original seven puzzles introduce invariance, decomposition, and symmetry.
+Seven new puzzles continue from Day 7 in increasing structural difficulty:
+reverse area ratios, similarity, intersecting lines, recovering missing areas,
+parallel strips, and two three-line triangle challenges. Each new session names
+the earlier ideas it builds on; the generator checks that its difficulty score
+strictly increases from the preceding rung. The original seven questions keep
+their seeds and answers. Player experience is still needed to calibrate the
+progression; changing the edition seed supplies variations of the same ideas. The
 [static reader](reader/README.md) shows the question, answer check, progressive
 hints, solution, previous/next links and a collapsed list of all puzzles. It uses emilesilvis.com's stylesheet
 and existing GitHub Pages hosting, and remembers entered answers in the current
@@ -111,7 +116,7 @@ Every generated puzzle also has an **estimated difficulty label**: depth 1 →
 pages, and the browser reader and archive. The other scoring factors order
 puzzles within a band; these broad labels are not calibrated player ratings.
 
-### Recipes (21)
+### Recipes (28)
 
 - **depth 1** — `rect_area`, `tri_right_area`, `circle_area`,
   `triangle_angle_sum`, `square_diagonal`
@@ -120,7 +125,9 @@ puzzles within a band; these broad labels are not calibrated player ratings.
   `isosceles_base_angle`, `quarter_circle_corner`, `annulus`, `sliding_triangle`
 - **depth 3** — `leaf_lens`, `square_circle_square`, `four_quarter_circles`,
   `chained_rect_square_circle`, `square_plus_semicircle`,
-  `tangent_chord_annulus`, `rotated_square_overlap`
+  `tangent_chord_annulus`, `rotated_square_overlap`, `tilted_square_frame`,
+  `crossed_trapezoid`, `crossing_cevians`, `cevian_area_recovery`,
+  `cevian_parallel_band`, `three_cevians`, `unequal_three_cevians`
 
 Targets cover **area** (shaded region), **length**, and **angle**.
 

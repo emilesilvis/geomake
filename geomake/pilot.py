@@ -1,4 +1,4 @@
-"""An authored, seven-session playtest; a hypothesis about enjoyment, not a rating.
+"""Fourteen authored sessions, with a progressively harder second chapter.
 
 Question pages contain only public givens. Hints and explanations live in
 separate files. The editor manifest deliberately contains spoilers.
@@ -12,11 +12,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .puzzle import Puzzle
+from .ladder import score
 from .recipes import build
 from .render import render
 from .verify import verify
 
-PILOT_VERSION = "first-week-v1"
+PILOT_VERSION = "two-week-ladder-v1"
+# Appending sessions must not resample the original seven questions.
+SEED_NAMESPACE = "first-week-v1"
 
 
 @dataclass(frozen=True)
@@ -30,6 +33,7 @@ class Session:
     discuss: str
     extension: str
     extension_answer: str
+    builds_on: tuple[int, ...] = ()
 
 
 SESSIONS = (
@@ -131,11 +135,116 @@ SESSIONS = (
         "Would the same quarter-area argument work if the fixed square were replaced by a non-square rectangle?",
         "Not in general. Center an 8 × 2 rectangle at the origin and cut it with the perpendicular lines y = x and y = −x. Its upper sector is a triangle with base 2 and height 1, so its area is 1, not a quarter of 16. A sufficiently large tilted square can cover that sector. The rectangle lacks the quarter-turn symmetry used in the proof.",
     ),
+    Session(
+        "tilted_square_frame", "square_diagonal",
+        "Reverse an area relationship to recover a frame without finding any lengths.",
+        ("right-triangle area", "whole minus part", "area scales with length squared"),
+        (
+            "The white square's area is known, but none of its sides are. Can the four blue corners help relate the inner and outer areas?",
+            "Each corner is a right triangle. Write the two pieces of an outer side as px and qx, using the given ratio p:q.",
+            "The outer area is (p+q)²x² and the four corners total 2pqx². The inner area is therefore (p²+q²)x². Use the known inner area to find x², then the frame.",
+        ),
+        "A repeated decomposition gives an area ratio. Work backward from the known area, keeping the unknown length squared throughout.",
+        "How did Day 7's repeated pieces help here? Did either of you calculate a side that turned out to be unnecessary?",
+        "Among all positive division ratios p:q, when does the frame occupy the largest fraction of the outer square?",
+        "Its fraction is 2pq/(p+q)². Since (p−q)² ≥ 0, (p+q)² ≥ 4pq, so the fraction is at most 1/2, reached when p=q: all four points are midpoints.",
+        builds_on=(4, 7),
+    ),
+    Session(
+        "crossed_trapezoid", "sliding_triangle",
+        "Recover a length ratio from two areas, then transfer it through shared heights.",
+        ("similar triangles", "squared scale factors", "triangles with a shared height"),
+        (
+            "Focus first on the two unshaded triangles. What does the pair of parallel sides tell you about their angles?",
+            "The top and bottom triangles are similar. Their area ratio is the square of their length ratio, so take its square root.",
+            "Compare AOD with COD using their bases AO and OC on the same diagonal. Their common height from D makes their area ratio AO:OC. Repeat for BOC.",
+        ),
+        "Use squared ratios for similar figures and unsquared base ratios for triangles sharing a height. Switching between those two comparisons is the new move.",
+        "Where did you need a square root, and where would taking one have been a mistake?",
+        "If the top and bottom triangle areas are U and V, express the whole trapezoid's area using only U and V.",
+        "Each side triangle has area √(UV), so the whole area is U+V+2√(UV) = (√U+√V)². Horizontal shearing does not change that conclusion.",
+        builds_on=(1, 8),
+    ),
+    Session(
+        "crossing_cevians", "sliding_triangle",
+        "Transfer an area ratio into a hidden segment ratio across an intersection.",
+        ("shared bases and heights", "similar right triangles", "midpoint area ratios"),
+        (
+            "Find areas or area ratios involving D and E before trying to locate P. The position of the intersection can be recovered indirectly.",
+            "Compare triangles ABD and ADE. First use BD:DC, then the fact that E halves AC. These triangles share base AD.",
+            "Their area ratio equals the ratio of their heights to AD. Because B, P and E are collinear, that is also BP:PE. Use it to split triangle ABE, which has half of ABC's area.",
+        ),
+        "A line intersection can be located by ratios of heights. Shared-base area comparisons supply those ratios without coordinates or measured lengths.",
+        "Which was easier to see: the two perpendicular heights, or the small similar triangles that turn their ratio into BP:PE?",
+        "Keep E at the midpoint, but let BD:DC = t:1. What fraction of ABC is ABP?",
+        "Area ABD : area ADE = 2t:1, so BP:PE = 2t:1. ABP takes 2t/(2t+1) of ABE, which is half of ABC. The fraction is t/(2t+1).",
+        builds_on=(9,),
+    ),
+    Session(
+        "cevian_area_recovery", "crossing_cevians",
+        "Use two known small areas to recover another when the side division is hidden.",
+        ("intersection area ratios", "equal areas from a midpoint", "simultaneous linear equations"),
+        (
+            "The two given triangles fill ABE. What does E being a midpoint tell you about the whole triangle?",
+            "Call the areas of BDP and DPE u and v. Comparing bases on BE gives u:v from the two given areas. You still need a second equation.",
+            "ADE and CDE have equal area. If the given areas are X for ABP and Y for APE, the whole area is 2(X+Y), but also X+u+2(Y+v). Thus u+2v=X and u/v=X/Y.",
+        ),
+        "The same geometry can be solved backward. Combine a ratio with an area partition to replace a missing side-division fact.",
+        "Which of your two equations described a ratio, and which described the whole picture? Could either one determine the answer alone?",
+        "With X = area ABP and Y = area APE, can you also recover BD:DC?",
+        "Let v = area DPE. Shared heights give area BDP = (X/Y)v. Then area ABD : area ADC = [X+(X/Y)v] : [2(Y+v)] = X:2Y. These triangles share a height from A, so BD:DC = X:2Y.",
+        builds_on=(10,),
+    ),
+    Session(
+        "cevian_parallel_band", "crossing_cevians",
+        "Turn an intersection ratio into a height, square the scale, and subtract nested areas.",
+        ("intersection ratios", "similar-triangle area ratios", "whole minus part"),
+        (
+            "The blue strip is the difference between two triangles with vertex A. Both are similar to ABC because their bases are parallel to BC.",
+            "The parallel through E gives a half-size triangle. To find the other scale, first recover BP:PE using the argument from Day 10.",
+            "If BD:DC=t:1, then BP:PE=2t:1. With whole height h, P is at height th/(2t+1) above BC. The triangle above P's parallel has linear scale (t+1)/(2t+1). Square both triangle scales and subtract their areas.",
+        ),
+        "An internal ratio becomes a distance from a baseline, then a similarity scale, then an area. Keep those quantities distinct through the longer chain.",
+        "Did you initially measure P's height from BC or from A? How did you catch which one the area calculation needed?",
+        "For BD:DC=t:1, derive the fraction of ABC occupied by the strip and describe what happens as t becomes very large.",
+        "The fraction is ((t+1)/(2t+1))²−1/4 = (4t+3)/(4(2t+1)²). It tends to zero as t grows: P approaches E and the two parallel sections approach each other.",
+        builds_on=(9, 10, 11),
+    ),
+    Session(
+        "three_cevians", "crossing_cevians",
+        "Repeat an intersection argument around a triangle, then remove three corner regions.",
+        ("intersection ratios", "cyclic reuse of an argument", "disjoint area decomposition"),
+        (
+            "Could you find the three larger triangles ABP, BCQ and CAR instead of attacking the tiny central triangle directly?",
+            "Start with ABP. Compare ABD and ADE on their common base AD to recover BP:PE. E is no longer necessarily a midpoint, so include its stated division ratio.",
+            "For a common side ratio t:1, ABE has 1/(t+1) of the whole area and BP:PE=t(t+1):1. Thus ABP has t/(t²+t+1) of the whole. Cycle the vertex names to obtain the other two corner areas, then subtract all three.",
+        ),
+        "Equal division ratios allow the same proof to run three times. This is symmetry of the area relationships; the drawing need not have rotational symmetry.",
+        "What justified equal corner areas even though the outer triangle did not look equilateral?",
+        "Replace the common ratio by any t:1 with t>1. What fraction is central? What happens at t=1?",
+        "The fraction is 1−3t/(t²+t+1) = (t−1)²/(t²+t+1). At t=1 the three lines are medians and meet at a single point, so the central area is zero.",
+        builds_on=(10, 12),
+    ),
+    Session(
+        "unequal_three_cevians", "three_cevians",
+        "Remove the equal-ratio shortcut and coordinate three different intersection calculations.",
+        ("three-line triangle decomposition", "shared-height ratios", "combining unequal fractions"),
+        (
+            "The same three corner triangles still fill the unshaded region, but their areas need separate calculations because the side ratios differ.",
+            "For ABP, compare ABD with ADE to obtain BP:PE, then take the corresponding fraction of ABE. Repeat with BCE and BEF for the next corner.",
+            "Writing BD:DC=p:1, CE:EA=q:1 and AF:FB=r:1, the corner fractions are p/(pq+p+1), q/(qr+q+1) and r/(rp+r+1). Derive each from shared heights, then subtract their sum from 1.",
+        ),
+        "The final rung combines the whole chain: side divisions, shared-base heights, intersection ratios, area fractions, and a three-part subtraction without an equal-area shortcut.",
+        "How did you organize the three calculations so that each ratio stayed attached to the correct corner? Compare your notation before comparing arithmetic.",
+        "What condition on positive p, q and r makes the central area vanish? Use the corner-fraction expression to find a condition, rather than assuming all three ratios must be equal.",
+        "Subtracting the three corner fractions and simplifying gives (pqr−1)²/[(pq+p+1)(qr+q+1)(rp+r+1)]. The denominators are positive, so the area vanishes exactly when pqr=1. The three dividing lines then meet at one point, even when the three ratios differ.",
+        builds_on=(11, 12, 13),
+    ),
 )
 
 
 def _seed(seed: int, key: str) -> int:
-    digest = hashlib.sha256(f"{PILOT_VERSION}:{seed}:{key}".encode()).digest()
+    digest = hashlib.sha256(f"{SEED_NAMESPACE}:{seed}:{key}".encode()).digest()
     return int.from_bytes(digest[:4], "big")
 
 
@@ -143,12 +252,19 @@ def _verified_puzzles(seed: int) -> list[tuple[Puzzle, Puzzle | None]]:
     """Freeze a whole edition before writing it; no silent recipe substitution."""
     puzzles = []
     for day, session in enumerate(SESSIONS, 1):
+        if any(prior < 1 or prior >= day for prior in session.builds_on):
+            raise ValueError(f"Day {day} must build only on earlier sessions")
         # These two recipes sample the same side first. Keeping their seed
         # equal makes the deliberate area comparison exact, not coincidental.
         key = "paired-square" if day in (2, 3) else f"day-{day}"
         main = build(session.recipe, _seed(seed, key))
         warmup = build(session.warmup, _seed(seed, f"warmup-{day}")) if session.warmup else None
         puzzles.append((main, warmup))
+    # Preserve the original week; the continuation must climb from its last
+    # puzzle under the existing structural score as well as the authored ideas.
+    scores = [score(main) for main, _ in puzzles[6:]]
+    if any(after <= before for before, after in zip(scores, scores[1:])):
+        raise ValueError("The continuation must increase in difficulty at every rung")
     for main, warmup in puzzles:
         for puzzle in (main, warmup):
             if puzzle is None:
@@ -235,11 +351,13 @@ def generate_pilot(seed: int, outdir: str) -> dict:
             "extension": session.extension, "extension_answer": session.extension_answer,
             "warmup": warmup.to_record(image_path=f"images/{slug}-warmup.png") if warmup else None,
         })
+        if session.builds_on:
+            record["builds_on"] = list(session.builds_on)
         records.append(record)
         index.append(f"- [Day {day}]({slug}.md) · {main.difficulty_label} (estimated)")
 
     _write(out / "START_HERE.md", (
-        "# Seven days of geometry, for two\n\n"
+        f"# {len(SESSIONS)} days of geometry, for two\n\n"
         "One common puzzle each day, an optional warm-up when you want it, and a stretch after the explanation. "
         "Start on any day of the week and go in order. Missing a day creates no catch-up work.\n\n"
         "Allow roughly 10–20 minutes as an initial experiment, not a deadline. "
@@ -247,6 +365,8 @@ def generate_pilot(seed: int, outdir: str) -> dict:
         "Both people should use the same edition seed.\n\n"
         "Some sessions introduce an idea; others ask you to recognize it in a new setting. "
         "Later sessions may take longer. Warm-ups and hints are part of solving; use them freely.\n\n"
+        "Days 8–14 form a harder ladder: each adds a reasoning step or combines ideas from earlier days. "
+        "The Easy/Medium/Hard labels are broad estimates; the later Hard puzzles continue to increase in structural difficulty.\n\n"
         + "\n".join(index) + "\n\n"
         "The question pages do not print answers. Hints, explanations, and stretch answers open separately. "
         "The `editor.json` file contains all solutions; it is for reviewing the pack after solving.\n\n"
@@ -255,7 +375,7 @@ def generate_pilot(seed: int, outdir: str) -> dict:
         "Its purpose is to discover which kinds of puzzle make you want another day.\n\n"
         f"Edition: `{PILOT_VERSION}` · seed `{seed}`"
     ))
-    rows = "\n".join(f"| {day} | | | | | | |" for day in range(1, 8))
+    rows = "\n".join(f"| {day} | | | | | | |" for day in range(1, len(SESSIONS) + 1))
     _write(out / "FEEDBACK.md", (
         "# How did it feel?\n\n"
         "Keep one copy per person, or write two entries per day. Use a separate notes file or paper "
@@ -265,11 +385,11 @@ def generate_pilot(seed: int, outdir: str) -> dict:
         "Approximate time is optional and is not a competition.\n\n"
         "| Day | Person | Finished / paused / read solution | Help | Effort | Enjoyment | Click moment / want more? |\n"
         "| --- | --- | --- | --- | --- | --- | --- |\n" + rows + "\n\n"
-        "After the week: Which puzzle would you send to a friend? Which felt like work? "
+        "After each week: Which puzzle would you send to a friend? Which felt like work? "
         "Did comparing explanations add something? Would you prefer one puzzle, several short rungs, "
         "or a harder puzzle you return to? Note familiarity as well: a puzzle you already know cannot calibrate a new insight."
     ))
     manifest = {"version": PILOT_VERSION, "seed": seed, "sessions": records}
     _write(out / "editor.json", json.dumps(manifest, indent=2, ensure_ascii=False))
-    print(f"Seven-day pilot: {out / 'START_HERE.md'}")
+    print(f"{len(SESSIONS)}-day pilot: {out / 'START_HERE.md'}")
     return manifest

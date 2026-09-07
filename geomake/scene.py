@@ -54,6 +54,18 @@ class Scene:
         self.points[label] = p
         return p
 
+    def intersect_lines(self, label: str, a: Point, b: Point, c: Point, d: Point) -> Point:
+        """Record the exact intersection of two nonparallel construction lines."""
+        ux, uy = b[0] - a[0], b[1] - a[1]
+        vx, vy = d[0] - c[0], d[1] - c[1]
+        determinant = sp.simplify(ux * vy - uy * vx)
+        if determinant == 0:
+            raise ValueError("Cannot intersect parallel or degenerate lines")
+        t = sp.simplify(((c[0] - a[0]) * vy - (c[1] - a[1]) * vx) / determinant)
+        point = P(sp.simplify(a[0] + t * ux), sp.simplify(a[1] + t * uy))
+        self._log("intersect_lines", label=label, a=a, b=b, c=c, d=d)
+        return self.pt(label, point)
+
     # ------------------------------------------------------------------ ops
 
     def place_square(self, name: str, side, origin=(0, 0)) -> Polygon:

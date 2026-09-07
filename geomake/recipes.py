@@ -9,6 +9,7 @@ sub-results feeding one step.
 
 from __future__ import annotations
 
+import math
 import random
 
 import sympy as sp
@@ -691,6 +692,316 @@ def rotated_square_overlap(rng: random.Random) -> Puzzle:
 
 
 # ---------------------------------------------------------------------------
+
+
+def _along(a, b, fraction):
+    return P(*(sp.simplify(x + fraction * (y - x)) for x, y in zip(a, b)))
+
+
+def _point_label(label, point, scale, dx=0, dy=0):
+    return Given(label=label, kind="text", p1=P(
+        point[0] + sp.Rational(str(dx)) * scale,
+        point[1] + sp.Rational(str(dy)) * scale,
+    ))
+
+
+def _centroid(*points):
+    return P(*(sum(p[i] for p in points) / len(points) for i in (0, 1)))
+
+
+def _cevian_scene(rng, area, p, q=1, r=None):
+    """Public triangle and dividing lines; aspect ratio and apex position vary.
+
+    BD:DC = p:1, CE:EA = q:1, and optionally AF:FB = r:1.
+    No area-ratio construction helpers are drawn.
+    """
+    width = max(4, math.isqrt(2 * int(area)) + rng.choice([-2, 0, 2]))
+    height = sp.Rational(2 * area, width)
+    apex = sp.Rational(rng.choice([3, 4, 6, 7]), 10) * width
+    scene = Scene()
+    outer = scene.place_triangle("ABC", [P(apex, height), P(0, 0), P(width, 0)])
+    A, B, C = outer.pts
+    for name, point in zip("ABC", outer.pts):
+        scene.pt(name, point)
+    D = scene.pt("D", _along(B, C, sp.Rational(p, p + 1)))
+    E = scene.pt("E", _along(C, A, sp.Rational(q, q + 1)))
+    scene.add_line(A, D)
+    scene.add_line(B, E)
+    Pn = scene.intersect_lines("P", A, D, B, E)
+    scale = max(width, height)
+    givens = [
+        _point_label("A", A, scale, dy=.05),
+        _point_label("B", B, scale, dx=-.04, dy=-.04),
+        _point_label("C", C, scale, dx=.04, dy=-.04),
+        _point_label("D", D, scale, dy=-.05),
+        _point_label("E", E, scale, dx=.045, dy=.02),
+        _point_label("P", Pn, scale, dx=-.04, dy=.015),
+    ]
+    if r is not None:
+        F = scene.pt("F", _along(A, B, sp.Rational(r, r + 1)))
+        scene.add_line(C, F)
+        Q = scene.intersect_lines("Q", B, E, C, F)
+        R = scene.intersect_lines("R", C, F, A, D)
+        givens.extend([
+            _point_label("F", F, scale, dx=-.045),
+            _point_label("Q", Q, scale, dx=.055),
+            _point_label("R", R, scale, dx=-.035, dy=.05),
+        ])
+    return scene, outer, givens
+
+
+@recipe("tilted_square_frame", 3)
+def tilted_square_frame(rng: random.Random) -> Puzzle:
+    p, q = rng.choice([(1, 2), (1, 3), (2, 3)])
+    unit = rng.randint(2, 4)
+    side = (p + q) * unit
+    scene = Scene()
+    outer = scene.place_square("ABCD", side)
+    A, B, C, D = outer.pts
+    inner_points = tuple(_along(outer.pts[i], outer.pts[(i + 1) % 4], sp.Rational(p, p + q)) for i in range(4))
+    inner = scene.add(Polygon(name="EFGH", pts=inner_points))
+    scene._log("join_side_divisions", square=outer.name, ratio=f"{p}:{q}", name=inner.name)
+    for name, point in zip("ABCDEFGH", outer.pts + inner_points):
+        scene.pt(name, point)
+    inner_area = (p*p + q*q) * unit*unit
+    answer = 2 * p * q * unit*unit
+    givens = [Given(label=f"{inner_area} cm²", kind="text", p1=P(side / sp.Integer(2), side / sp.Integer(2)))]
+    for name, point, dx, dy in zip("ABCDEFGH", outer.pts + inner_points,
+                                 [-.04, .04, .04, -.04, 0, .05, 0, -.05],
+                                 [-.04, -.04, .04, .04, -.05, 0, .05, 0]):
+        givens.append(_point_label(name, point, side, dx, dy))
+    return Puzzle(
+        recipe="tilted_square_frame",
+        question=(f"ABCD is a square. Points E, F, G and H lie on AB, BC, CD and DA, respectively, "
+                  f"with AE:EB = BF:FC = CG:GD = DH:HA = {p}:{q}. "
+                  f"The inner square EFGH has area {inner_area} cm². Find the total shaded area of the four corners."),
+        scene=scene, target=Target("area", region=Region.diff(outer, inner)), givens=givens,
+        solution_steps=[
+            f"Write the two parts of each outer side as {p}x and {q}x. The outer square has area {p+q}²x² = {(p+q)**2}x².",
+            f"Each corner is a right triangle with perpendicular legs {p}x and {q}x, so its area is {_num(sp.Rational(p*q, 2))}x².",
+            f"Together the four corners have area {2*p*q}x². Subtracting them leaves inner area {p*p+q*q}x².",
+            f"The given inner area therefore fixes x² = {inner_area}/{p*p+q*q} = {unit*unit}. No side length is needed.",
+            f"The shaded frame has area {2*p*q} × {unit*unit} = {answer} cm².",
+        ],
+        depth=3, width=2, nonstandard=True,
+        params={"p": p, "q": q, "unit": unit, "inner_area": inner_area},
+    )
+
+
+@recipe("crossed_trapezoid", 3)
+def crossed_trapezoid(rng: random.Random) -> Puzzle:
+    a, b = rng.choice([(2, 3), (2, 5), (3, 4)])
+    k = rng.randint(2, 4)
+    stretch = rng.choice([sp.Integer(1), sp.Rational(3, 2), sp.Integer(2)])
+    height = (a + b) * k / stretch
+    offset = (b - a + rng.choice([-1, 0, 1])) * stretch
+    scene = Scene()
+    A, B, C, D = P(0, 0), P(2*b*stretch, 0), P(offset+2*a*stretch, height), P(offset, height)
+    outer = scene.add(Polygon(name="ABCD", pts=(A, B, C, D)))
+    scene._log("place_trapezoid", name=outer.name, bottom=2*b*stretch, top=2*a*stretch, height=height, offset=offset)
+    for name, point in zip("ABCD", outer.pts):
+        scene.pt(name, point)
+    scene.add_line(A, C)
+    scene.add_line(B, D)
+    O = scene.intersect_lines("O", A, C, B, D)
+    left = Polygon(name="AOD", pts=(A, O, D))
+    right = Polygon(name="BOC", pts=(B, C, O))
+    top, bottom = k*a*a, k*b*b
+    scale = max(2*b*stretch, height)
+    givens = [
+        Given(label=f"{top} cm²", kind="text", p1=_centroid(C, D, O)),
+        Given(label=f"{bottom} cm²", kind="text", p1=_centroid(A, B, O)),
+        *[_point_label(name, point, scale, dx, dy) for name, point, dx, dy in [
+            ("A", A, -.04, -.04), ("B", B, .04, -.04),
+            ("C", C, .04, .04), ("D", D, -.04, .04), ("O", O, .045, 0),
+        ]],
+    ]
+    return Puzzle(
+        recipe="crossed_trapezoid",
+        question=(f"In trapezoid ABCD, AB is parallel to CD. Diagonals AC and BD meet at O. "
+                  f"Triangle COD has area {top} cm² and triangle AOB has area {bottom} cm². "
+                  "Find the total shaded area of triangles AOD and BOC."),
+        scene=scene, target=Target("area", region=Region.union(left, right)), givens=givens,
+        solution_steps=[
+            "Triangles COD and AOB are similar: their angles at O are equal, and the parallel sides give equal corresponding angles.",
+            f"Areas scale as the square of lengths. Their area ratio {top}:{bottom} gives length ratio {_num(sp.Rational(a,b))}, so AO:OC = BO:OD = {b}:{a}.",
+            "Triangles AOD and COD share the perpendicular height from D to AC. Their area ratio is therefore AO:OC.",
+            f"Thus area AOD = {top} × {b}/{a} = {k*a*b} cm².",
+            f"Similarly, BOC and DOC share the height from C to BD. Area BOC = {top} × {b}/{a} = {k*a*b} cm².",
+            f"The two shaded triangles have disjoint interiors, so their total area is {k*a*b} + {k*a*b} = {2*k*a*b} cm².",
+        ],
+        depth=3, width=2, nonstandard=True,
+        params={"a": a, "b": b, "k": k, "stretch": stretch, "offset": offset, "top_area": top, "bottom_area": bottom},
+    )
+
+
+@recipe("crossing_cevians", 3)
+def crossing_cevians(rng: random.Random) -> Puzzle:
+    p = rng.choice([2, 3])
+    area = 2 * (2*p + 1) * rng.randint(4, 9)
+    scene, outer, givens = _cevian_scene(rng, area, p)
+    A, B, C, D, E, Pn = (scene.points[name] for name in "ABCDEP")
+    target = Polygon(name="ABP", pts=(A, B, Pn))
+    answer = sp.Rational(p * area, 2*p + 1)
+    return Puzzle(
+        recipe="crossing_cevians",
+        question=(f"Triangle ABC has area {area} cm². D lies on BC with BD:DC = {p}:1, "
+                  "and E is the midpoint of AC. Segments AD and BE meet at P. Find the shaded area of triangle ABP."),
+        scene=scene, target=Target("area", region=Region.prim(target)), givens=givens,
+        solution_steps=[
+            f"Triangles ABD and ADC share the height from A to BC, so their areas are in the ratio {p}:1.",
+            f"E is the midpoint of AC, so area ADE is half of area ADC. Therefore area ABD : area ADE = {2*p}:1.",
+            f"ABD and ADE share base AD. Their perpendicular heights from B and E to AD are consequently in the ratio {2*p}:1.",
+            f"B, P and E lie on one straight line, with P on AD. Their heights to AD scale with distance from P (similar right triangles), giving BP:PE = {2*p}:1.",
+            f"Area ABE is half of ABC, or {area//2} cm². ABP and APE share the height from A to BE, so ABP takes {2*p}/{2*p+1} of ABE.",
+            f"Shaded area = {area//2} × {2*p}/{2*p+1} = {_num(answer)} cm².",
+        ],
+        depth=3, width=3, nonstandard=True,
+        params={"p": p, "total_area": area},
+    )
+
+
+@recipe("cevian_area_recovery", 3)
+def cevian_area_recovery(rng: random.Random) -> Puzzle:
+    p = rng.choice([2, 3])
+    y = rng.randint(4, 9)
+    x = 2*p*y
+    area = 2 * (x + y)
+    scene, outer, givens = _cevian_scene(rng, area, p)
+    A, B, C, D, E, Pn = (scene.points[name] for name in "ABCDEP")
+    target = Polygon(name="BDP", pts=(B, D, Pn))
+    givens.extend([
+        Given(label=str(x), kind="text", p1=_centroid(A, B, Pn)),
+        Given(label=str(y), kind="text", p1=_centroid(A, Pn, E)),
+    ])
+    answer = sp.Rational(x*x, x+2*y)
+    return Puzzle(
+        recipe="cevian_area_recovery",
+        question=("E is the midpoint of side AC of triangle ABC. D lies on BC, and AD meets BE at P. "
+                  f"Triangle ABP has area {x} cm²; triangle APE has area {y} cm². "
+                  "The position of D is otherwise unknown. Find the shaded area of triangle BDP."),
+        scene=scene, target=Target("area", region=Region.prim(target)), givens=givens,
+        solution_steps=[
+            f"Area ABE = {x} + {y} = {x+y} cm². Because E is the midpoint of AC, the whole area ABC is {area} cm².",
+            f"ABP and APE share a height to BE, so BP:PE = {x}:{y}.",
+            f"Write u = area BDP and v = area DPE. These triangles also share a height to BE, giving u/v = {x}/{y}.",
+            f"Triangles ADE and CDE have equal bases AE and CE and the same height from D. Each has area {y} + v.",
+            f"Partition ABC into ABP, BDP, ADE and CDE: {area} = {x} + u + 2({y} + v). Thus u + 2v = {x}.",
+            f"Substitute u = ({x}/{y})v: v = ({x} × {y})/({x} + 2 × {y}) = {_num(sp.Rational(x*y, x+2*y))} cm².",
+            f"The required area is u = {x}²/({x} + 2 × {y}) = {_num(answer)} cm². No side ratio for D was needed.",
+        ],
+        depth=3, width=3, nonstandard=True,
+        params={"p": p, "abp_area": x, "ape_area": y},
+    )
+
+
+@recipe("cevian_parallel_band", 3)
+def cevian_parallel_band(rng: random.Random) -> Puzzle:
+    p = rng.choice([2, 3])
+    k = rng.randint(1, 3)
+    area = 4 * (2*p + 1)**2 * k
+    scene, outer, givens = _cevian_scene(rng, area, p)
+    A, B, C, D, E, Pn = (scene.points[name] for name in "ABCDEP")
+    fraction = sp.Rational(p+1, 2*p+1)
+    G = scene.pt("G", _along(A, B, fraction))
+    F = scene.pt("F", _along(A, C, fraction))
+    H = scene.pt("H", midpoint(A, B))
+    band = scene.add(Polygon(name="band", pts=(H, G, F, E)))
+    scale = max(C[0] - B[0], A[1] - B[1])
+    givens[-1] = _point_label("P", Pn, scale, dx=.035, dy=-.05)
+    scene._log("parallel_sections", triangle=outer.name, through=("E", "P"), parallel="BC")
+    upper = Polygon(name="AGF", pts=(A, G, F))
+    cap = Polygon(name="AHE", pts=(A, H, E))
+    answer = (4*p + 3) * k
+    return Puzzle(
+        recipe="cevian_parallel_band",
+        question=(f"Triangle ABC has area {area} cm². D lies on BC with BD:DC = {p}:1, "
+                  "E is the midpoint of AC, and AD meets BE at P. Two segments parallel to BC "
+                  "run across the triangle, one through E and one through P. Find the shaded area of the strip between them."),
+        scene=scene, target=Target("area", region=Region.prim(band), marker_size=16), givens=givens,
+        solution_steps=[
+            f"Shared heights give area ABD : area ADC = {p}:1; E halves AC, so area ABD : area ADE = {2*p}:1.",
+            f"ABD and ADE share base AD. Comparing their heights, then the similar right triangles along BE, gives BP:PE = {2*p}:1.",
+            f"Let the whole triangle's height above BC be h. E is at height h/2, so P is at ({2*p}/{2*p+1})(h/2) = {p}h/{2*p+1}.",
+            f"The distance from A down to the parallel through P is therefore h − {p}h/{2*p+1} = {p+1}h/{2*p+1}.",
+            f"The triangle above that lower parallel is similar to ABC. Its area is ({p+1}/{2*p+1})² × {area} = {4*(p+1)**2*k} cm².",
+            f"The triangle above the parallel through E has half the linear scale of ABC, so its area is {area}/4 = {area//4} cm².",
+            "The shaded strip is the larger of those two nested triangles minus the smaller. Subtract their areas, not their linear scale factors.",
+            f"Shaded area = {4*(p+1)**2*k} − {area//4} = {answer} cm².",
+        ],
+        depth=3, width=3, nonstandard=True,
+        params={"p": p, "total_area": area},
+        equal_region_claims=[(Region.prim(band), Region.diff(upper, cap))],
+    )
+
+
+@recipe("three_cevians", 3)
+def three_cevians(rng: random.Random) -> Puzzle:
+    m = rng.choice([2, 3])
+    denominator = m*m + m + 1
+    area = denominator * rng.randint(6, 15)
+    scene, outer, givens = _cevian_scene(rng, area, m, m, m)
+    A, B, C, Pn, Q, R = (scene.points[name] for name in "ABCPQR")
+    target = Polygon(name="PQR", pts=(Pn, Q, R))
+    corner = sp.Rational(m * area, denominator)
+    complement = Region.diff(outer, Polygon(name="ABP", pts=(A, B, Pn)),
+                             Polygon(name="BCQ", pts=(B, C, Q)), Polygon(name="CAR", pts=(C, A, R)))
+    return Puzzle(
+        recipe="three_cevians",
+        question=(f"Triangle ABC has area {area} cm². D, E and F lie on BC, CA and AB, respectively, "
+                  f"with BD:DC = CE:EA = AF:FB = {m}:1. Draw AD, BE and CF. "
+                  "P is the intersection of AD and BE, Q of BE and CF, and R of CF and AD. Find the shaded area of triangle PQR."),
+        scene=scene, target=Target("area", region=Region.prim(target)), givens=givens,
+        solution_steps=[
+            f"Write T = {area}, the area of ABC. Because AE:AC = 1:{m+1}, area ABE = T/{m+1}.",
+            f"BD:DC = {m}:1 gives area ABD = {m}T/{m+1} and area ADC = T/{m+1}.",
+            f"Within ADC, E divides AC with AE:AC = 1:{m+1}. Hence area ADE = T/{(m+1)**2}.",
+            f"ABD and ADE share AD, so their heights are in the ratio {m*(m+1)}:1. Since BE crosses AD at P, BP:PE has that same ratio.",
+            f"ABP therefore takes {m*(m+1)}/{denominator} of ABE: area ABP = {m}T/{denominator} = {_num(corner)} cm².",
+            f"Repeat the argument with the vertex names cycled A→B→C. The three side-division ratios are the same, so BCQ and CAR each also have area {_num(corner)} cm². The outer triangle need not be equilateral.",
+            "ABP, BCQ and CAR have disjoint interiors and fill everything outside PQR. Subtract all three from ABC.",
+            f"Shaded area = {area} − 3 × {_num(corner)} = {_num(area-3*corner)} cm².",
+        ],
+        depth=3, width=4, nonstandard=True,
+        params={"ratio": m, "total_area": area},
+        equal_region_claims=[(Region.prim(target), complement)],
+    )
+
+
+@recipe("unequal_three_cevians", 3)
+def unequal_three_cevians(rng: random.Random) -> Puzzle:
+    p, q, r = rng.choice([(2, 1, 3), (2, 3, 1), (2, 1, 4), (3, 1, 2)])
+    d1, d2, d3 = p*q+p+1, q*r+q+1, r*p+r+1
+    area = math.lcm(d1, d2, d3) * rng.randint(1, 3)
+    scene, outer, givens = _cevian_scene(rng, area, p, q, r)
+    A, B, C, Pn, Q, R = (scene.points[name] for name in "ABCPQR")
+    target = Polygon(name="PQR", pts=(Pn, Q, R))
+    a1, a2, a3 = (sp.Rational(n*area, d) for n, d in [(p, d1), (q, d2), (r, d3)])
+    complement = Region.diff(outer, Polygon(name="ABP", pts=(A, B, Pn)),
+                             Polygon(name="BCQ", pts=(B, C, Q)), Polygon(name="CAR", pts=(C, A, R)))
+    return Puzzle(
+        recipe="unequal_three_cevians",
+        question=(f"Triangle ABC has area {area} cm². D, E and F lie on BC, CA and AB, respectively. "
+                  f"This time BD:DC = {p}:1, CE:EA = {q}:1 and AF:FB = {r}:1. "
+                  "P is the intersection of AD and BE, Q of BE and CF, and R of CF and AD. "
+                  "Find the shaded area of triangle PQR."),
+        scene=scene, target=Target("area", region=Region.prim(target)), givens=givens,
+        solution_steps=[
+            f"Let T = {area}. The first base ratio gives area ABD = {p}T/{p+1} and area ADC = T/{p+1}.",
+            f"AE:AC = 1:{q+1}, so area ADE = T/{(p+1)*(q+1)}. Comparing heights on base AD gives BP:PE = {p*(q+1)}:1.",
+            f"Area ABE = T/{q+1}. Thus area ABP = ({p*(q+1)}/{d1}) × T/{q+1} = {p}T/{d1} = {_num(a1)} cm².",
+            f"For the next corner, area BCE = {q}T/{q+1}. Because BF:BA = 1:{r+1}, area BEF = T/{(q+1)*(r+1)}.",
+            f"BCE and BEF share base BE. Their height ratio gives CQ:QF = {q*(r+1)}:1.",
+            f"Area BCF = T/{r+1}, so area BCQ = ({q*(r+1)}/{d2}) × T/{r+1} = {q}T/{d2} = {_num(a2)} cm².",
+            f"For the last corner, area CAF = {r}T/{r+1}. Since CD:CB = 1:{p+1}, area CFD = T/{(r+1)*(p+1)}.",
+            f"CAF and CFD share base CF. Their height ratio gives AR:RD = {r*(p+1)}:1.",
+            f"Area CAD = T/{p+1}, so area CAR = ({r*(p+1)}/{d3}) × T/{p+1} = {r}T/{d3} = {_num(a3)} cm².",
+            f"These three corner triangles fill the unshaded region without overlap. PQR has area {area} − {_num(a1)} − {_num(a2)} − {_num(a3)} = {_num(area-a1-a2-a3)} cm².",
+        ],
+        depth=3, width=4, nonstandard=True,
+        params={"p": p, "q": q, "r": r, "total_area": area},
+        equal_region_claims=[(Region.prim(target), complement)],
+    )
 
 
 def by_depth(depth: int) -> list[str]:

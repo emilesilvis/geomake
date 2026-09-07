@@ -182,7 +182,7 @@ def render(puzzle: Puzzle, path: str, show_answer: bool = False, *, show_difficu
     # target marker
     if t.kind == "area":
         qx, qy = _rep_point(t.region)
-        ax.text(qx, qy, "?", ha="center", va="center", fontsize=26, color=QMARK,
+        ax.text(qx, qy, "?", ha="center", va="center", fontsize=t.marker_size, color=QMARK,
                 fontweight="bold", zorder=10)
     elif t.kind == "length":
         (lx1, ly1), (lx2, ly2) = pfloat(t.p1), pfloat(t.p2)
