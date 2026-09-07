@@ -11,6 +11,10 @@ Easy (depth 1), Medium (depth 2), or Hard (depth 3). The exporter requires a
 label on every puzzle. Labels are excluded from the edition identity, so
 adding or recalibrating them preserves existing saved answers.
 
+The default authored pack has fourteen puzzles. Puzzles 8–14 continue upward
+from Puzzle 7, combining area ratios, similarity and intersecting lines; they
+remain in the broad Hard band. Navigation and the archive include the whole pack.
+
 From the geomake repository root:
 
 ```sh
@@ -44,6 +48,6 @@ Entered answers are remembered only in that browser, using a namespaced
 localStorage key. They are never uploaded; this reader does not synchronize
 devices or maintain player accounts. Browser storage is optional for solving.
 
-The week remains self-paced. There is no calendar lock or automatic supply of
+The two-week pack remains self-paced. There is no calendar lock or automatic supply of
 future weeks. The fuller warm-ups, extensions and discussion prompts remain in
 the Markdown pilot rather than adding controls to this page.
