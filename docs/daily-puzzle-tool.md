@@ -31,7 +31,7 @@ These are ingredients, not a ready-made system that guarantees satisfaction. Lea
 | The original renderer outlined every constructed shape, including both circular segments inside `leaf_lens`. | The answer construction exposed the auxiliary diagonal in the question. | Keep construction helpers available for verification while hiding them from question outlines. This is implemented. |
 | Original question PNGs carried annotations, while essential relationships sometimes lived only in the JSON question. | Passing around an image alone can omit the actual problem statement. | Deliver the statement and diagram together. The trial does this in each day page. |
 
-The existing `generate` and `ladder` commands remain useful for sampling and structural experiments. The `pilot` command follows an authored sequence. Its original week is retained; the seven-session continuation is required to increase strictly under the existing structural score from Day 7 onward. The conceptual order is explained below, while actual human difficulty still needs playtesting.
+The existing `generate` and `ladder` commands remain useful for sampling and structural experiments. The `pilot` command follows an authored sequence. Its original week is retained; both seven-session continuations are required to increase strictly under the existing structural score from Day 7 onward. The conceptual order is explained below, while actual human difficulty still needs playtesting.
 
 ## The daily experience
 
@@ -42,13 +42,13 @@ For separate solving, each person keeps their attempt private until ready to com
 The fuller reader originally proposed below is a possible future direction. The
 current user preference is a spartan page matching emilesilvis.com, hosted by
 its existing GitHub Pages setup. The implemented static reader keeps only the
-puzzle, answer check, progressive hints, explanation, previous/next links and
+puzzle, answer check, progressive hints, previous/next links and
 a collapsed list for returning to unlocked puzzles. A correct answer unlocks
 the next puzzle; later pages stay locked even when opened directly. Completion
-is remembered in the current browser, while hints and solutions remain available
-on the current puzzle.
-It shares the site's stylesheet and theme preference, with no branding,
-account requirement, feedback dashboard or synchronized notebook.
+is saved by the Cloudflare Worker in D1, while drafts and a private player token
+stay in the browser. Hints remain available on the current puzzle. The reader's
+Solution control and worked-solution payloads have been removed. It shares the
+site's stylesheet and theme preference and asks only for a public name or nickname.
 
 Potential later additions, if the pair finds them useful:
 
@@ -59,9 +59,20 @@ Potential later additions, if the pair finds them useful:
 5. A deliberate “ready to compare” action; one person's completion should not expose their answer to the other automatically.
 6. Persistent attempts and an archive. Missing a day leaves the next session available without creating mandatory catch-up work.
 
-Start without timing or ranking people. A cleaner second solution is a better candidate for a shared challenge than speed, given the stated purpose. This default is a product hypothesis that the pair can revise.
+The initial trial avoided timing or ranking people. The user has since requested
+a public leaderboard and selected Cloudflare Workers plus D1. The implemented
+leaderboard ranks the number of correct solves, with equal ranks for ties.
+It does not use speed as a scoring rule. A random browser token identifies each
+player without a password or email; changing devices creates a separate player.
 
-The trial implements the content and manual solve/discuss loop. It exports Markdown and images, with separate hints and answers. `reader/build.py` also exports a responsive static reader with answer checking and deliberate hint/solution reveal. Answers are remembered only in the current browser. It does not implement scheduled delivery, accounts, or synchronization; static answer files are publicly inspectable.
+The trial implements the content and manual solve/discuss loop. It exports
+Markdown and images, with separate hints and answers. `reader/build.py` also
+exports a responsive static reader with answer checking and deliberate hint reveal.
+Worked solutions remain in the Markdown pack and editor manifest. When built
+with `--api-url`, answers are checked by the Worker, numeric check files are
+omitted, and correct solves persist in D1. The server enforces sequential unlocks
+and counts each solve once. Standalone builds retain browser-only completion and
+public static numeric checks. Scheduled delivery and device linking are not implemented.
 
 ## Two timescales of progression
 
@@ -129,7 +140,7 @@ order; they do not establish a calibrated human rating.
 
 Each addition has an optional warm-up, three separate hints, a complete
 public-fact solution, a comparison prompt and a stretch with its own explanation.
-The pack now contains fourteen main puzzles and thirteen warm-ups. Its seed
+This chapter brought the pack to fourteen main puzzles and thirteen warm-ups. Its seed
 namespace stays fixed so the original seven questions and their answers do not
 change when the manifest version advances to `two-week-ladder-v1`.
 
@@ -153,6 +164,52 @@ checks establish the stated side divisions, parallel sections, intersection
 incidence, given areas, exact public-fact formulas and invariance under hidden
 shape changes. The renderer keeps auxiliary proof lines out of the questions.
 Only the dividing lines and parallels stated in each question are visible.
+
+## The third week: reverse the reasoning, then nest it
+
+Days 15–21 extend the same ladder, preserving the first fourteen seeded questions.
+The pack contains twenty-one main sessions and twenty warm-ups, with three hints,
+worked explanations, discussion prompts and optional stretches for every new
+session. The manifest version is `three-week-ladder-v1`; the seed namespace stays
+`first-week-v1`.
+
+| Day | Main puzzle | New demand | Builds on | Solution steps |
+| --- | --- | --- | --- | --- |
+| 15 | Central area given only one corner area and the side divisions | Reverse a known fraction to recover the missing total. | 8, 14 | 11 |
+| 16 | Central area with BD:DC hidden | Recover a side division from two areas before applying the decomposition. | 11, 14, 15 | 13 |
+| 17 | Central area with both the total and AF:FB hidden | Use one corner to recover the total, then another to recover the missing division. | 15, 16 | 14 |
+| 18 | A parallel cut across a corner triangle | Recover the total, compare two intersection positions on AD, divide their distance fractions, square the similarity scale and subtract. | 12, 15, 17 | 15 |
+| 19 | A second, equal-division construction inside PQR | Find PQR first, then make it the reference whole for the inner proof. | 13, 14, 18 | 16 |
+| 20 | Unequal divisions in both nested layers | Derive six distinct corner fractions while tracking two reference areas. | 14, 19 | 20 |
+| 21 | Outer shading given only the innermost area | Derive both retained fractions, reverse both scales and subtract the intermediate area. | 15, 17, 20 | 23 |
+
+All seven remain depth 3 with width 4. Their structural scores rise strictly
+from Day 14's ten-step derivation; each added demand is explained above. The
+longer solutions derive the reused facts rather than requiring a named theorem.
+The automatic ordering check also rejects reversed rungs before exporting any
+files. These are structural estimates, not measured player difficulty.
+
+Write a=p/(pq+p+1), b=q/(qr+q+1), c=r/(rp+r+1) and f=1−a−b−c.
+As in the second chapter, p, q and r are the cyclic side ratios and T is ABC's
+area. All sampled products pqr exceed 1, so the three corner interiors are
+disjoint. For nested constructions, U∈QR, V∈RP, W∈PQ, X=PU∩QV, Y=QV∩RW and
+Z=RW∩PU. The inner ratios u, v, w use the same cyclic convention.
+
+| Family | Public facts → unique target |
+| --- | --- |
+| Total recovery | Given X=area ABP, T=X/a, so PQR=fX/a. |
+| Missing ratio | Given T and X=area ABP, ABE=T/(q+1) and APE=Y=T/(q+1)−X. Shared heights give BP:PE=X:Y=p(q+1):1, so p=X/[Y(q+1)]. The now-known three ratios determine fT. |
+| Double recovery | First recover T=X/a. Given Z=area CAR, CDR=T/(p+1)−Z. Shared heights give AR:RD=Z:CDR=r(p+1):1, hence r=Z/[(p+1)CDR]. These uniquely determine the remaining corner and central areas. |
+| Corner band | AP/AD=(p+1)/(pq+p+1) and AR/AD=r(p+1)/(rp+r+1). Their quotient is k=AP/AR. Since PS∥RC, APS has k² of ARC's area cT; the shaded band is cT(1−k²), with T recovered from ABP. |
+| Equal inner divisions | The outer center has area K=fT. At inner ratio 2:1, each of PQX, QRY and RPZ has area 2K/7 by the shared-height argument. Their complement XYZ is K/7. |
+| Unequal inner divisions | Relative to K=fT, the inner corner fractions are u/(uv+u+1), v/(vw+v+1) and w/(wu+w+1). Their complement has fraction g, giving XYZ=gfT. |
+| Nested recovery | For given L=area XYZ, recover K=L/g and T=L/(fg). The asked outer frame is T−K=L(1−f)/(fg). |
+
+The nested outer ratios are cyclic variants of (2,4,7), retaining fraction
+25/66. Inner equal divisions retain 1/7; unequal cyclic variants of (2,1,3)
+retain 1/10. These choices keep the visible center large enough for labels and
+the given numbers manageable. Rotating ratios and changing the drawing are
+practice variants; the seven new reasoning tasks are the authored progression.
 
 ## Why the first week's main puzzles are determined by their public facts
 
@@ -179,7 +236,7 @@ The new regression checks vary hidden configurations while keeping public quanti
 | **3. Sustain the supply** | Author and review a rolling four-week queue. Expand into shared bases/heights, similar triangles, area ratios, angle chasing, tangency, and symmetry, following the pair's preferences. | Every scheduled main puzzle passes the publication checks below. The queue distinguishes new reasoning from intentional replay, and review throughput replenishes a week as a week is consumed. |
 | **4. Improve selection** | Use personal prerequisite observations and puzzle feedback to select common tasks with appropriate support. Include delayed reuse of successful ideas. | Subsequent attempts show that support helps the struggling player and extensions remain interesting to the other. A correct answer alone is not evidence of this. |
 
-The four-week reserve is an operational target, not a claim about the number of ideas needed for enjoyment. The current pack supplies fourteen main sessions; the remaining queue still needs authoring and playtesting. When a chapter is exhausted, move to a new concept or an explicitly chosen revisit. Resampling a scale parameter should not be silently advertised as a fresh discovery.
+The four-week reserve is an operational target, not a claim about the number of ideas needed for enjoyment. The current pack supplies twenty-one main sessions; the remaining queue still needs authoring and playtesting. When a chapter is exhausted, move to a new concept or an explicitly chosen revisit. Resampling a scale parameter should not be silently advertised as a fresh discovery.
 
 ### Reuse and boundaries
 
@@ -199,7 +256,12 @@ For each candidate, verify the exact target against the constructed geometry, ch
 
 Then test the sequence with the actual pair. The direction succeeds when they can reliably access fair puzzles, find a fitting entry, reach insights worth discussing, and want to return over repeated sessions. Neither passing tests nor a polished reader establishes that emotional outcome.
 
-**Current status:** a researched design, a fourteen-session content pilot, 28 recipe families, targeted diagram fixes, and a minimal static reader for emilesilvis.com. Arithmetic parsing and static export are tested, including malformed input, spoiler separation in question pages, subdirectory links and preservation of an existing export after a failed rebuild. The open evidence is the pair's experience. Scheduled delivery and a replenishable reviewed queue remain to be built.
+**Current status:** a researched design, a twenty-one-session content pilot, 35
+recipe families, targeted diagram fixes, and a minimal reader for emilesilvis.com
+with a Cloudflare Worker and D1 public leaderboard. Arithmetic parsing, static
+export, player registration, sequential answer checking, rank ties and progress
+preservation are tested. The open evidence is the pair's experience. Scheduled
+delivery and a replenishable reviewed queue remain to be built.
 
 ### Verification record, 6 September 2026
 
@@ -218,3 +280,20 @@ These results verify the implementation and the prepared trial, not either playe
 - After the final small-triangle layout adjustment: 75 focused continuation and unequal-division checks passed.
 - JavaScript answer-parser suite: 3 passed. `git diff --check` passed.
 - Generated and built the seed-7 fourteen-session pack. Visually checked all seven new main diagrams, corrected cramped labels and the narrow-strip marker, and verified the answer check, progressive hints, worked solution, archive and Day 7 → Day 8 navigation in the local browser reader.
+
+### Third week and leaderboard verification, 8 September 2026
+
+- Full Python suite after the seven new families: 1,092 passed. Final focused
+  reader, third-week and renderer checks: 66 passed.
+- JavaScript reader and backend checks: 19 passed, including arithmetic parsing,
+  token persistence, registration retries, sequential server checks, duplicate
+  solves, rank ties, body limits and progress across edition changes.
+- Generated the final seed-7 pack in `out/daily-pilot-v3/` and inspected all seven
+  new diagrams. Inner labels were spaced and reduced slightly for nested triangles.
+- The first fourteen sessions reproduce published edition `7472b5f5c599085e`,
+  allowing its browser drafts and verified completion to be recovered.
+- Browser checks covered registration, incorrect/correct answers, the public
+  solved count and persistence after reload. The Solution control is absent.
+- Deployed the Worker and D1 database, then verified live CORS, registration,
+  sequential unlocking, correct and incorrect answers, restored progress and
+  public ranking. The temporary deployment-check player was removed.

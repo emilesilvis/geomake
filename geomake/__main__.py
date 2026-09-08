@@ -28,7 +28,7 @@ def main():
     ld.add_argument("--seed", type=int, default=0)
     ld.add_argument("--out", default="ladder")
 
-    pilot = sub.add_parser("pilot", help="fourteen authored daily sessions with separate hints and explanations")
+    pilot = sub.add_parser("pilot", help="twenty-one authored daily sessions with separate hints and explanations")
     pilot.add_argument("--seed", type=int, default=7, help="use the same seed for both players")
     pilot.add_argument("--out", default="out/pilot")
 

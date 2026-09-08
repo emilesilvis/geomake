@@ -9,9 +9,10 @@ from pathlib import Path
 import re
 import shutil
 import tempfile
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parent
-ASSETS = ("styles.css", "theme.js", "app.js", "answer.js", "progress.js")
+ASSETS = ("styles.css", "theme.js", "app.js", "answer.js", "progress.js", "leaderboard.js")
 
 
 def page_name(day: int) -> str:
@@ -40,8 +41,33 @@ def edition_identity(manifest: dict) -> str:
     return hashlib.sha256(json.dumps(content, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:16]
 
 
-def build(edition: Path, output: Path) -> Path:
+def puzzle_identity(puzzle: dict) -> str:
+    """A solve survives appended days and editorial changes to the same question."""
+    content = {key: puzzle.get(key) for key in ("recipe", "seed", "question", "target_kind", "unit")}
+    content["answer"] = puzzle["answer"].get("exact", puzzle["answer"]["float"])
+    return hashlib.sha256(json.dumps(content, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+
+
+def previous_editions(manifest: dict) -> list[dict]:
+    """Only an identical published prefix can recover that edition's browser progress."""
+    if manifest.get("version") != "three-week-ladder-v1":
+        return []
+    editions = []
+    for version, total in (("first-week-v1", 7), ("two-week-ladder-v1", 14)):
+        if len(manifest["sessions"]) > total:
+            previous = {**manifest, "version": version, "sessions": manifest["sessions"][:total]}
+            editions.append({"edition": edition_identity(previous), "total": total})
+    return editions
+
+
+def build(edition: Path, output: Path, api_url: str = "") -> Path:
     edition, output = edition.resolve(), output.resolve()
+    api_url = api_url.rstrip("/")
+    if api_url:
+        api = urlsplit(api_url)
+        local = api.hostname in {"localhost", "127.0.0.1", "::1"}
+        if not api.hostname or api.username or api.password or api.query or api.fragment or api.path or (api.scheme != "https" and not (api.scheme == "http" and local)):
+            raise ValueError("The API URL must be an HTTPS origin (or HTTP localhost for development).")
     if ROOT.is_relative_to(output) or edition.is_relative_to(output):
         raise ValueError("The output must not contain the reader source or edition.")
     if output.exists() and any(output.iterdir()) and not (output / ".geomake-build").is_file():
@@ -64,7 +90,7 @@ def build(edition: Path, output: Path) -> Path:
         for name in ASSETS:
             content = (ROOT / name).read_text(encoding="utf-8")
             if name == "app.js":
-                for module in ("answer.js", "progress.js"):
+                for module in ("answer.js", "progress.js", "leaderboard.js"):
                     content = content.replace(f"'./{module}'", f"'./{module}?v={asset_id}'")
             (staged / name).write_text(content, encoding="utf-8")
         for puzzle in puzzles:
@@ -78,10 +104,10 @@ def build(edition: Path, output: Path) -> Path:
             help_dir = staged / help_path
             help_dir.mkdir(parents=True)
             payloads = {
-                "check": puzzle["answer"]["float"],
-                "solution": {"answer": puzzle["answer"]["display"], "steps": puzzle["solution_steps"]},
                 **{f"hint-{level}": hint for level, hint in enumerate(puzzle["hints"], 1)},
             }
+            if not api_url:
+                payloads["check"] = puzzle["answer"]["float"]
             for name, value in payloads.items():
                 (help_dir / f"{name}.json").write_text(json.dumps(value, ensure_ascii=False, allow_nan=False) + "\n", encoding="utf-8")
             unit = puzzle["unit"]
@@ -93,11 +119,13 @@ def build(edition: Path, output: Path) -> Path:
                 "alt": puzzle["question"], "help": help_path,
                 "unit": unit, "hint_count": len(puzzle["hints"]),
                 "difficulty": puzzle["difficulty"]["label"],
+                "api": api_url, "previous_editions": json.dumps(previous_editions(manifest)),
             }.items()}
             fields["previous"] = puzzle_link(day - 1, "← Previous", rel="prev") if day > 1 else '<span></span>'
             fields["next"] = puzzle_link(day + 1, "Next →", rel="next") if day < len(puzzles) else '<span></span>'
-            fields["puzzle_hidden"] = ' hidden' if day > 1 else ''
-            fields["lock_hidden"] = ' hidden' if day == 1 else ''
+            fields["puzzle_hidden"] = ' hidden' if day > 1 or api_url else ''
+            fields["lock_hidden"] = ' hidden' if day == 1 or api_url else ''
+            fields["leaderboard_hidden"] = '' if api_url else ' hidden'
             fields["progress"] = f"Enter the correct answer to unlock Puzzle {day + 1}." if day < len(puzzles) else "Solve this puzzle to complete the set."
             fields["archive"] = "".join(
                 '<li>' + puzzle_link(item["day"], f'Puzzle {item["day"]}', current=item["day"] == day)
@@ -118,5 +146,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--edition", type=Path, default=ROOT.parent / "out/daily-pilot/editor.json")
     parser.add_argument("--out", type=Path, default=ROOT / "dist")
+    parser.add_argument("--api-url", default="", help="Cloudflare Worker origin; omit for the standalone reader")
     args = parser.parse_args()
-    print(build(args.edition, args.out))
+    print(build(args.edition, args.out, args.api_url))

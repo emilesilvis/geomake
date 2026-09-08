@@ -177,7 +177,7 @@ def render(puzzle: Puzzle, path: str, show_answer: bool = False, *, show_difficu
             _angle_arc(ax, g.vertex, g.p1, g.p2, g.label, scale)
         elif g.kind == "text":
             tx, ty = pfloat(g.p1)
-            ax.text(tx, ty, g.label, ha="center", va="center", fontsize=12.5, color=LINE, zorder=9)
+            ax.text(tx, ty, g.label, ha="center", va="center", fontsize=g.font_size, color=LINE, zorder=9)
 
     # target marker
     if t.kind == "area":

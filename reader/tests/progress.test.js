@@ -87,3 +87,19 @@ test('progress reflects completions from other pages and cleared storage', () =>
   persistent.clear();
   assert.equal(current.completedThrough(), 0);
 });
+
+test('an identical published prefix preserves drafts and completion when more puzzles are appended', () => {
+  const saved = storage();
+  const original = createProgress('previous', 2, [() => saved]);
+  original.saveAnswer(1, '40');
+  original.markSolved(1);
+  original.saveAnswer(2, 'pi');
+  original.markSolved(2);
+  saved.setItem('geomake:previous:3:solved', 'true');
+  const extended = createProgress('extended', 3, [() => saved], [{ edition: 'previous', total: 2 }]);
+  assert.equal(extended.completedThrough(), 2);
+  assert.equal(extended.loadAnswer(1), '40');
+  assert.equal(extended.loadAnswer(2), 'pi');
+  assert.equal(extended.markSolved(3), true);
+  assert.equal(extended.completedThrough(), 3);
+});

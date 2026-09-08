@@ -14,7 +14,7 @@ import random
 
 import sympy as sp
 
-from .core import P, Polygon, Region, fmt_exact, midpoint
+from .core import P, Polygon, Region, dist, fmt_exact, midpoint
 from .puzzle import Given, Puzzle, Target
 from .scene import Scene
 
@@ -1001,6 +1001,333 @@ def unequal_three_cevians(rng: random.Random) -> Puzzle:
         depth=3, width=4, nonstandard=True,
         params={"p": p, "q": q, "r": r, "total_area": area},
         equal_region_claims=[(Region.prim(target), complement)],
+    )
+
+
+# ============================================================ third chapter
+
+
+def _corner_fractions(p, q, r):
+    return tuple(sp.Rational(n, d) for n, d in (
+        (p, p*q+p+1), (q, q*r+q+1), (r, r*p+r+1),
+    ))
+
+
+def _corner_fraction_steps(vertices, feet, crossings, ratios, total):
+    """Derive each corner from public side divisions, with a named whole area."""
+    steps = []
+    for i in range(3):
+        a, b, c = (vertices[(i+j) % 3] for j in range(3))
+        d, e = (feet[(i+j) % 3] for j in range(2))
+        x = crossings[i]
+        p, q = (ratios[(i+j) % 3] for j in range(2))
+        denominator = p*q+p+1
+        steps.extend([
+            f"Using shared heights in {vertices}, whose area is {total}, area {a+b+d} = {p}{total}/{p+1}. "
+            f"Since {a+e}:{a+c} = 1:{q+1}, area {a+d+e} = {total}/{(p+1)*(q+1)}.",
+            f"{a+b+d} and {a+d+e} share base {a+d}. Their height ratio is {p*(q+1)}:1. "
+            f"The similar right triangles along {b+e} therefore give {b+x}:{x+e} = {p*(q+1)}:1.",
+            f"Area {a+b+e} = {total}/{q+1}. Splitting it on {b+e} gives area {a+b+x} = "
+            f"({p*(q+1)}/{denominator}) × {total}/{q+1} = {_num(sp.Rational(p, denominator))} × {total}.",
+        ])
+    return steps
+
+
+def _three_line_statement(divisions):
+    return ("D, E and F lie on BC, CA and AB of triangle ABC, respectively. "
+            f"{divisions} P is the intersection of AD and BE, Q of BE and CF, "
+            "and R of CF and AD. ")
+
+
+def _central_regions(scene, vertices="ABC", crossings="PQR"):
+    a, b, c = (scene.points[n] for n in vertices)
+    p, q, r = (scene.points[n] for n in crossings)
+    center = Polygon(name=crossings, pts=(p, q, r))
+    corners = [Polygon(name=name, pts=points) for name, points in (
+        (vertices[:2]+crossings[0], (a, b, p)),
+        (vertices[1:]+crossings[1], (b, c, q)),
+        (vertices[2]+vertices[0]+crossings[2], (c, a, r)),
+    )]
+    return center, Region.diff(scene.shapes[vertices], *corners)
+
+
+def _recovery_parameters(rng):
+    p, q, r = rng.choice([(2, 1, 3), (2, 3, 1), (2, 1, 4), (3, 1, 2)])
+    total = math.lcm(*(f.q for f in _corner_fractions(p, q, r))) * rng.randint(2, 5)
+    return p, q, r, total
+
+
+@recipe("cevian_total_recovery", 3)
+def cevian_total_recovery(rng: random.Random) -> Puzzle:
+    p, q, r, total = _recovery_parameters(rng)
+    fractions = _corner_fractions(p, q, r)
+    x = fractions[0] * total
+    scene, outer, givens = _cevian_scene(rng, total, p, q, r)
+    center, complement = _central_regions(scene)
+    steps = _corner_fraction_steps("ABC", "DEF", "PQR", (p, q, r), "T")
+    steps.insert(3, f"The given area ABP is {_num(x)} cm², so {_num(fractions[0])} × T = {_num(x)}. "
+                   f"Recover the whole area: T = {_num(x)} ÷ {_num(fractions[0])} = {total} cm².")
+    answer = total * (1 - sum(fractions))
+    steps.append(f"ABP, BCQ and CAR have disjoint interiors and fill the complement of PQR. "
+                 f"Subtract their areas from the recovered whole: {total} − "
+                 f"{' − '.join(_num(total*f) for f in fractions)} = {_num(answer)} cm².")
+    return Puzzle(
+        recipe="cevian_total_recovery",
+        question=_three_line_statement(f"BD:DC = {p}:1, CE:EA = {q}:1 and AF:FB = {r}:1.")
+                 + f"Triangle ABP has area {_num(x)} cm². Find the shaded area of PQR.",
+        scene=scene, target=Target("area", region=Region.prim(center), value=answer), givens=givens,
+        solution_steps=steps, depth=3, width=4, nonstandard=True,
+        params={"p": p, "q": q, "r": r, "abp_area": x},
+        equal_region_claims=[(Region.prim(center), complement)],
+    )
+
+
+@recipe("cevian_missing_ratio", 3)
+def cevian_missing_ratio(rng: random.Random) -> Puzzle:
+    p, q, r, total = _recovery_parameters(rng)
+    fractions = _corner_fractions(p, q, r)
+    x = fractions[0] * total
+    y = sp.Rational(total, q+1) - x
+    scene, outer, givens = _cevian_scene(rng, total, p, q, r)
+    center, complement = _central_regions(scene)
+    answer = total * (1 - sum(fractions))
+    steps = [
+        f"Let T = {total}. CE:EA = {q}:1 gives area ABE = T/{q+1} = {_num(x+y)} cm².",
+        f"The known ABP leaves area APE = {_num(x+y)} − {_num(x)} = {_num(y)} cm².",
+        f"ABP and APE have a common height to BE, so BP:PE = {_num(x)}:{_num(y)} = {p*(q+1)}:1.",
+        "The heights from B and E to AD are in that same ratio, by similar right triangles along BE. "
+        "Thus area ABD : area ADE = BP:PE.",
+        f"Write the unknown BD:DC as t:1. Shared heights give ABD = tT/(t+1) and "
+        f"ADE = T/[{q+1}(t+1)], so their area ratio is {q+1}t:1.",
+        f"Equating ratios gives {q+1}t = {p*(q+1)}, hence t = {p}. The missing side division has been recovered.",
+        *_corner_fraction_steps("ABC", "DEF", "PQR", (p, q, r), "T")[3:],
+        f"Subtract the three disjoint corner triangles: area PQR = {total} − {_num(x)} − "
+        f"{_num(fractions[1]*total)} − {_num(fractions[2]*total)} = {_num(answer)} cm².",
+    ]
+    return Puzzle(
+        recipe="cevian_missing_ratio",
+        question=_three_line_statement(f"CE:EA = {q}:1 and AF:FB = {r}:1; the division BD:DC is unknown.")
+                 + f"ABC has area {total} cm² and ABP has area {_num(x)} cm². Find the shaded area of PQR.",
+        scene=scene, target=Target("area", region=Region.prim(center), value=answer), givens=givens,
+        solution_steps=steps, depth=3, width=4, nonstandard=True,
+        params={"p": p, "q": q, "r": r, "total_area": total, "abp_area": x},
+        equal_region_claims=[(Region.prim(center), complement)],
+    )
+
+
+@recipe("cevian_double_recovery", 3)
+def cevian_double_recovery(rng: random.Random) -> Puzzle:
+    p, q, r, total = _recovery_parameters(rng)
+    fractions = _corner_fractions(p, q, r)
+    x, y, z = (f*total for f in fractions)
+    scene, outer, givens = _cevian_scene(rng, total, p, q, r)
+    center, complement = _central_regions(scene)
+    remaining = sp.Rational(total, p+1) - z
+    answer = total - x - y - z
+    steps = [
+        *_corner_fraction_steps("ABC", "DEF", "PQR", (p, q, r), "T")[:3],
+        f"The given ABP now determines the missing total: T = {_num(x)} ÷ {_num(fractions[0])} = {total} cm².",
+        f"Area CAD = T/{p+1} = {_num(z+remaining)} cm², and its part CAR is given as {_num(z)} cm².",
+        f"The rest of CAD is CDR, of area {_num(z+remaining)} − {_num(z)} = {_num(remaining)} cm².",
+        f"CAR and CDR share the height from C to AD. Hence AR:RD = {_num(z)}:{_num(remaining)} = {r*(p+1)}:1.",
+        f"Write AF:FB = t:1. Shared heights give CAF = tT/(t+1) and CFD = T/[{p+1}(t+1)]. "
+        f"Comparing their heights on CF gives AR:RD = {p+1}t:1.",
+        f"Therefore {p+1}t = {r*(p+1)} and t = {r}. Both the total and the hidden side division are now known.",
+        *_corner_fraction_steps("ABC", "DEF", "PQR", (p, q, r), "T")[3:6],
+        "ABP, BCQ and CAR fill the region outside PQR with disjoint interiors, so their areas can be subtracted together.",
+        f"Shaded area = {total} − {_num(x)} − {_num(y)} − {_num(z)} = {_num(answer)} cm².",
+    ]
+    return Puzzle(
+        recipe="cevian_double_recovery",
+        question=_three_line_statement(f"BD:DC = {p}:1 and CE:EA = {q}:1; the division AF:FB is unknown.")
+                 + f"ABP has area {_num(x)} cm² and CAR has area {_num(z)} cm². "
+                 "The total area of ABC is unknown. Find the shaded area of PQR.",
+        scene=scene, target=Target("area", region=Region.prim(center), value=answer), givens=givens,
+        solution_steps=steps, depth=3, width=4, nonstandard=True,
+        params={"p": p, "q": q, "r": r, "abp_area": x, "car_area": z},
+        equal_region_claims=[(Region.prim(center), complement)],
+    )
+
+
+@recipe("cevian_corner_band", 3)
+def cevian_corner_band(rng: random.Random) -> Puzzle:
+    p, q, r, total = _recovery_parameters(rng)
+    f1, _, f3 = _corner_fractions(p, q, r)
+    x, z = f1*total, f3*total
+    scene, outer, givens = _cevian_scene(rng, total, p, q, r)
+    A, B, C, D, Pn, R = (scene.points[n] for n in "ABCDPR")
+    ap = sp.Rational(p+1, p*q+p+1)
+    ar = sp.Rational(r*(p+1), r*p+r+1)
+    ratio = ap/ar
+    S = scene.pt("S", _along(A, C, ratio))
+    scene.add_line(Pn, S)
+    scene._log("parallel_section", through="P", parallel="RC", endpoint="S")
+    scale = max(C[0]-B[0], A[1]-B[1])
+    givens.append(_point_label("S", S, scale, dx=.045))
+    cap = Polygon(name="APS", pts=(A, Pn, S))
+    corner = Polygon(name="ARC", pts=(A, R, C))
+    band = Polygon(name="PRCS", pts=(Pn, R, C, S))
+    answer = z*(1-ratio**2)
+    steps = [
+        *_corner_fraction_steps("ABC", "DEF", "PQR", (p, q, r), "T")[:3],
+        f"Use the given ABP to recover T = {_num(x)} ÷ {_num(f1)} = {total} cm².",
+        f"Area ABD = {p}T/{p+1} = {_num(sp.Rational(p*total,p+1))}. "
+        f"Subtract ABP to find BDP = {_num(sp.Rational(p*total,p+1)-x)} cm².",
+        "ABP and BDP share the height from B to AD, so AP:PD equals their area ratio.",
+        f"Convert that part-to-part ratio to a fraction of all AD: AP/AD = ABP/ABD = {_num(ap)}.",
+        f"Shared heights also give CAF = {r}T/{r+1} and CFD = T/{(r+1)*(p+1)}.",
+        f"CAF and CFD share CF; comparing heights along AD gives AR:RD = {r*(p+1)}:1.",
+        f"Therefore AR/AD = {_num(ar)}. The points occur in the order A, P, R, D.",
+        f"Both distances start at A, so AP/AR = (AP/AD)/(AR/AD) = {_num(ap)} ÷ {_num(ar)} = {_num(ratio)}.",
+        "PS is parallel to RC, so triangles APS and ARC are similar with that linear scale factor.",
+        f"Triangles ARC and ADC share the height from C to AD. Area ARC = (AR/AD) × T/{p+1} = {_num(z)} cm².",
+        f"Square the similarity scale: area APS = ({_num(ratio)})² × {_num(z)} = {_num(z*ratio**2)} cm².",
+        f"The shaded quadrilateral PRCS is ARC minus APS: {_num(z)} − {_num(z*ratio**2)} = {_num(answer)} cm².",
+    ]
+    return Puzzle(
+        recipe="cevian_corner_band",
+        question=_three_line_statement(f"BD:DC = {p}:1, CE:EA = {q}:1 and AF:FB = {r}:1.")
+                 + f"ABP has area {_num(x)} cm². Through P, draw PS parallel to RC, meeting AC at S. "
+                 "Find the shaded area of quadrilateral PRCS.",
+        scene=scene, target=Target("area", region=Region.prim(band), value=answer, marker_size=18), givens=givens,
+        solution_steps=steps, depth=3, width=4, nonstandard=True,
+        params={"p": p, "q": q, "r": r, "abp_area": x},
+        equal_region_claims=[(Region.prim(band), Region.diff(corner, cap))],
+    )
+
+
+def _nested_cevian_scene(rng, total, outer_ratios, inner_ratios):
+    scene, outer, givens = _cevian_scene(rng, total, *outer_ratios)
+    center, outer_complement = _central_regions(scene)
+    scene.add(center)
+    Pn, Q, R = center.pts
+    u, v, w = inner_ratios
+    U = scene.pt("U", _along(Q, R, sp.Rational(u, u+1)))
+    V = scene.pt("V", _along(R, Pn, sp.Rational(v, v+1)))
+    W = scene.pt("W", _along(Pn, Q, sp.Rational(w, w+1)))
+    for a, b in ((Pn, U), (Q, V), (R, W)):
+        scene.add_line(a, b)
+    X = scene.intersect_lines("X", Pn, U, Q, V)
+    Y = scene.intersect_lines("Y", Q, V, R, W)
+    Z = scene.intersect_lines("Z", R, W, Pn, U)
+    inner, inner_complement = _central_regions(scene, "PQR", "XYZ")
+    scale = max(max(point[i] for point in center.pts)-min(point[i] for point in center.pts) for i in (0, 1))
+    # Side labels sit outside PQR; crossing labels sit in their adjacent white
+    # corner. Fixed screen offsets would collide when the triangle is sheared.
+    for name, point, a, b in (("U", U, Q, R), ("V", V, R, Pn), ("W", W, Pn, Q)):
+        offset = sp.Rational(4, 100)*scale/dist(a, b)
+        position = P(point[0]+offset*(b[1]-a[1]), point[1]-offset*(b[0]-a[0]))
+        givens.append(Given(label=name, kind="text", p1=position, font_size=11))
+    for name, point, a, b in (("X", X, Pn, Q), ("Y", Y, Q, R), ("Z", Z, R, Pn)):
+        toward = midpoint(a, b)
+        offset = sp.Rational(7, 100)*scale/dist(point, toward)
+        givens.append(Given(label=name, kind="text", p1=_along(point, toward, offset), font_size=11))
+    claims = [(Region.prim(center), outer_complement), (Region.prim(inner), inner_complement)]
+    return scene, outer, center, inner, givens, claims
+
+
+def _nested_statement(outer_ratios, inner_ratios):
+    p, q, r = outer_ratios
+    u, v, w = inner_ratios
+    return (_three_line_statement(f"BD:DC = {p}:1, CE:EA = {q}:1 and AF:FB = {r}:1.")
+            + "Inside PQR, U lies on QR, V on RP and W on PQ, with "
+            f"QU:UR = {u}:1, RV:VP = {v}:1 and PW:WQ = {w}:1. "
+            "X is the intersection of PU and QV, Y of QV and RW, and Z of RW and PU. ")
+
+
+def _nested_parameters(rng, *, equal_inner=False):
+    # Cyclic variants preserve the area fractions (25/66 outside, 1/7 or
+    # 1/10 inside), keeping arithmetic modest and the central diagram roomy.
+    outer = rng.choice([(2, 4, 7), (4, 7, 2), (7, 2, 4)])
+    inner = (2, 2, 2) if equal_inner else rng.choice([(2, 1, 3), (1, 3, 2), (3, 2, 1)])
+    total = (462 if equal_inner else 132) * rng.randint(1, 3)
+    return outer, inner, total
+
+
+@recipe("nested_three_cevians", 3)
+def nested_three_cevians(rng: random.Random) -> Puzzle:
+    ratios, inner_ratios, total = _nested_parameters(rng, equal_inner=True)
+    fractions = _corner_fractions(*ratios)
+    middle = total*(1-sum(fractions))
+    answer = middle/7
+    scene, outer, center, inner, givens, claims = _nested_cevian_scene(rng, total, ratios, inner_ratios)
+    steps = [
+        *_corner_fraction_steps("ABC", "DEF", "PQR", ratios, "T"),
+        f"With T = {total}, remove the three disjoint outer corners. Area PQR = {total} × "
+        f"(1 − {' − '.join(_num(f) for f in fractions)}) = {_num(middle)} cm².",
+        f"Now treat PQR as the whole triangle, with area K = {_num(middle)}. The inner side ratios refer to this triangle.",
+        "QU:UR = RV:VP = 2:1 gives area PQU = 2K/3 and area PUV = K/9 by shared heights.",
+        "Those triangles share PU, so comparing their heights along QV gives QX:XV = 6:1.",
+        "PQV has area K/3; PQX takes 6/7 of it, so area PQX = 2K/7.",
+        "Cycling P, Q and R gives the same fraction for QRY and RPZ. The inner corner areas are equal even though PQR is not equilateral.",
+        f"The three disjoint inner corners leave XYZ = K − 3(2K/7) = K/7 = {_num(answer)} cm².",
+    ]
+    return Puzzle(
+        recipe="nested_three_cevians",
+        question=_nested_statement(ratios, inner_ratios) + f"ABC has area {total} cm². Find the shaded area of XYZ.",
+        scene=scene, target=Target("area", region=Region.prim(inner), value=answer, marker_size=16), givens=givens,
+        solution_steps=steps, depth=3, width=4, nonstandard=True,
+        params=dict(zip(("p", "q", "r", "u", "v", "w"), ratios+inner_ratios), total_area=total),
+        equal_region_claims=claims,
+    )
+
+
+@recipe("nested_unequal_cevians", 3)
+def nested_unequal_cevians(rng: random.Random) -> Puzzle:
+    ratios, inner_ratios, total = _nested_parameters(rng)
+    outer_fractions = _corner_fractions(*ratios)
+    inner_fractions = _corner_fractions(*inner_ratios)
+    middle = total*(1-sum(outer_fractions))
+    answer = middle*(1-sum(inner_fractions))
+    scene, outer, center, inner, givens, claims = _nested_cevian_scene(rng, total, ratios, inner_ratios)
+    steps = [
+        *_corner_fraction_steps("ABC", "DEF", "PQR", ratios, "T"),
+        f"With T = {total}, remove the three disjoint outer corners to obtain PQR. "
+        f"Its area is K = {total} × (1 − {' − '.join(_num(f) for f in outer_fractions)}) = {_num(middle)} cm².",
+        *_corner_fraction_steps("PQR", "UVW", "XYZ", inner_ratios, "K"),
+        f"The inner corners PQX, QRY and RPZ are disjoint. Subtract them from PQR, whose area is K: "
+        f"XYZ = {_num(middle)} × (1 − {' − '.join(_num(f) for f in inner_fractions)}) = {_num(answer)} cm².",
+    ]
+    return Puzzle(
+        recipe="nested_unequal_cevians",
+        question=_nested_statement(ratios, inner_ratios) + f"ABC has area {total} cm². Find the shaded area of XYZ.",
+        scene=scene, target=Target("area", region=Region.prim(inner), value=answer, marker_size=14), givens=givens,
+        solution_steps=steps, depth=3, width=4, nonstandard=True,
+        params=dict(zip(("p", "q", "r", "u", "v", "w"), ratios+inner_ratios), total_area=total),
+        equal_region_claims=claims,
+    )
+
+
+@recipe("nested_cevian_recovery", 3)
+def nested_cevian_recovery(rng: random.Random) -> Puzzle:
+    ratios, inner_ratios, total = _nested_parameters(rng)
+    outer_fractions = _corner_fractions(*ratios)
+    inner_fractions = _corner_fractions(*inner_ratios)
+    outer_fraction, inner_fraction = 1-sum(outer_fractions), 1-sum(inner_fractions)
+    middle = total*outer_fraction
+    known = middle*inner_fraction
+    answer = total-middle
+    scene, outer, center, inner, givens, claims = _nested_cevian_scene(rng, total, ratios, inner_ratios)
+    steps = [
+        *_corner_fraction_steps("ABC", "DEF", "PQR", ratios, "T"),
+        f"Subtract the outer corner fractions: if ABC has area T, PQR has area K = "
+        f"(1 − {' − '.join(_num(f) for f in outer_fractions)}) × T = {_num(outer_fraction)} × T.",
+        *_corner_fraction_steps("PQR", "UVW", "XYZ", inner_ratios, "K"),
+        f"Subtract the inner corner fractions: XYZ has area "
+        f"(1 − {' − '.join(_num(f) for f in inner_fractions)}) × K = {_num(inner_fraction)} × K.",
+        f"Work outward from the given XYZ: K = {_num(known)} ÷ {_num(inner_fraction)} = {_num(middle)} cm².",
+        f"Reverse the outer fraction as well: T = {_num(middle)} ÷ {_num(outer_fraction)} = {total} cm².",
+        f"The shading is ABC outside PQR, so subtract the intermediate area, not the innermost one: "
+        f"{total} − {_num(middle)} = {_num(answer)} cm².",
+    ]
+    return Puzzle(
+        recipe="nested_cevian_recovery",
+        question=_nested_statement(ratios, inner_ratios) + f"XYZ has area {_num(known)} cm². "
+                 "Find the total shaded area inside ABC but outside PQR.",
+        scene=scene, target=Target("area", region=Region.diff(outer, center), value=answer), givens=givens,
+        solution_steps=steps, depth=3, width=4, nonstandard=True,
+        params=dict(zip(("p", "q", "r", "u", "v", "w"), ratios+inner_ratios), xyz_area=known),
+        equal_region_claims=claims,
     )
 
 
