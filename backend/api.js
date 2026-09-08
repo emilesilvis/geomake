@@ -61,7 +61,7 @@ export function createApp(catalog) {
     if (request.method === 'GET' && url.pathname === '/leaderboard') {
       const { results } = await env.DB.prepare(`
         SELECT p.id, p.name, COUNT(s.puzzle_id) AS solved
-        FROM players p LEFT JOIN solves s ON s.player_id = p.id AND s.puzzle_id IN (${placeholders})
+        FROM players p JOIN solves s ON s.player_id = p.id AND s.puzzle_id IN (${placeholders})
         GROUP BY p.id ORDER BY solved DESC, p.name COLLATE NOCASE, p.id LIMIT 100
       `).bind(...ids).all();
       let rank = 0;
