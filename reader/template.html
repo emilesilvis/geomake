@@ -10,12 +10,24 @@
   <script type="module" src="app.js?v={{assets}}"></script>
 </head>
 <body>
-  <main data-edition="{{edition}}" data-day="{{day}}" data-total="{{total}}" data-help="{{help}}" data-hints="{{hint_count}}">
+  <main data-edition="{{edition}}" data-day="{{day}}" data-total="{{total}}" data-help="{{help}}" data-hints="{{hint_count}}" data-api="{{api}}" data-previous-editions="{{previous_editions}}">
     <nav class="puzzle-nav" aria-label="Puzzles">
       {{previous}}
       <h1>Puzzle {{day}}</h1>
       {{next}}
     </nav>
+    <section id="player" aria-label="Your progress"{{leaderboard_hidden}}>
+      <form id="player-form">
+        <label for="player-name">Name on leaderboard</label>
+        <div class="answer-row">
+          <input id="player-name" name="nickname" type="text" maxlength="40" required autocomplete="nickname" aria-describedby="public-name-note">
+          <button id="save-player" type="submit">Save name</button>
+        </div>
+        <small id="public-name-note">Your name and number of solved puzzles will be public. A nickname is fine.</small>
+      </form>
+      <p id="player-summary" hidden><span id="player-label"></span> · <button id="change-name" class="text-button" type="button">Change name</button></p>
+      <p id="player-status" role="status" hidden></p>
+    </section>
     <p id="locked" role="status"{{lock_hidden}}>Solve <a id="resume" href="index.html">Puzzle 1</a> to unlock this puzzle.</p>
     <section id="puzzle" aria-label="Puzzle"{{puzzle_hidden}}>
       <p class="difficulty">Estimated difficulty: {{difficulty}}</p>
@@ -33,14 +45,21 @@
       <p id="progress" class="progress-note">{{progress}}</p>
       <div class="help-actions">
         <button id="hint" class="text-button" type="button">Hint</button>
-        <button id="explain" class="text-button" type="button" aria-expanded="false" aria-controls="solution">Solution</button>
       </div>
       <ol id="hints" aria-live="polite" hidden></ol>
-      <section id="solution" aria-label="Solution" hidden></section>
     </section>
     <details class="puzzle-list">
       <summary>All puzzles</summary>
       <ol>{{archive}}</ol>
+    </details>
+    <details id="leaderboard" class="puzzle-list"{{leaderboard_hidden}}>
+      <summary>Leaderboard</summary>
+      <p id="leaderboard-status" role="status"></p>
+      <table id="leaderboard-table" hidden>
+        <thead><tr><th scope="col">Rank</th><th scope="col">Name</th><th scope="col">Solved</th></tr></thead>
+        <tbody id="leaderboard-rows"></tbody>
+      </table>
+      <button id="refresh-leaderboard" class="text-button" type="button">Refresh</button>
     </details>
     <noscript><p>Enable JavaScript to check answers, reveal hints, and unlock puzzles.</p></noscript>
   </main>

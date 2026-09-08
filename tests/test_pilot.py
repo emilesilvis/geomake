@@ -18,14 +18,14 @@ def edition(tmp_path_factory):
 
 def test_edition_is_complete_and_the_deliberate_pair_has_the_same_size(edition):
     out, manifest = edition
-    assert len(manifest["sessions"]) == 14
+    assert len(manifest["sessions"]) == 21
     assert json.loads((out / "editor.json").read_text()) == manifest
     sessions = manifest["sessions"]
     assert sessions[1]["params"]["a"] == sessions[2]["params"]["a"]
     assert sessions[1]["answer"]["exact"] == sessions[2]["answer"]["exact"]
-    assert "14 days of geometry" in (out / "START_HERE.md").read_text()
-    assert "| 14 |" in (out / "FEEDBACK.md").read_text()
-    for day in range(1, 15):
+    assert "21 days of geometry" in (out / "START_HERE.md").read_text()
+    assert "| 21 |" in (out / "FEEDBACK.md").read_text()
+    for day in range(1, 22):
         slug = f"day-{day:02d}"
         question = (out / f"{slug}.md").read_text()
         record = sessions[day - 1]
@@ -67,7 +67,7 @@ def test_continuation_climbs_from_day_seven_and_references_earlier_ideas(seed):
     from geomake.ladder import score
 
     puzzles = [pilot.build(s.recipe, seed) for s in pilot.SESSIONS]
-    assert len({p.recipe for p in puzzles}) == 14
+    assert len({p.recipe for p in puzzles}) == 21
     scores = [score(p) for p in puzzles[6:]]
     assert all(a < b for a, b in zip(scores, scores[1:]))
     for day, session in enumerate(pilot.SESSIONS[7:], 8):
@@ -75,7 +75,7 @@ def test_continuation_climbs_from_day_seven_and_references_earlier_ideas(seed):
         assert all(1 <= prior < day for prior in session.builds_on)
 
 
-def test_original_seed_seven_puzzles_keep_their_published_seeds_and_answers(edition):
+def test_first_fourteen_seed_seven_puzzles_keep_their_published_seeds_and_answers(edition):
     _, manifest = edition
     original = [
         (3534216998, 40), (2009308712, 16 - 4 * math.pi),
@@ -83,8 +83,11 @@ def test_original_seed_seven_puzzles_keep_their_published_seeds_and_answers(edit
         (1787171501, -98 + 49 * math.pi),
         (4134286627, -100 + 50 * math.pi),
         (2176975175, 49 * math.pi), (1322470501, 25),
+        (635652747, 96), (3006073792, 48), (3864362855, 24),
+        (3744881869, 81 / 2), (2046081612, 45), (3127906943, 32),
+        (868593587, 25),
     ]
-    for record, (seed, answer) in zip(manifest["sessions"][:7], original):
+    for record, (seed, answer) in zip(manifest["sessions"][:14], original):
         assert record["seed"] == seed
         assert record["answer"]["float"] == pytest.approx(answer)
 

@@ -1,4 +1,4 @@
-"""Fourteen authored sessions, with a progressively harder second chapter.
+"""Twenty-one authored sessions, with two progressively harder continuations.
 
 Question pages contain only public givens. Hints and explanations live in
 separate files. The editor manifest deliberately contains spoilers.
@@ -17,8 +17,8 @@ from .recipes import build
 from .render import render
 from .verify import verify
 
-PILOT_VERSION = "two-week-ladder-v1"
-# Appending sessions must not resample the original seven questions.
+PILOT_VERSION = "three-week-ladder-v1"
+# Appending sessions must not resample any previously published questions.
 SEED_NAMESPACE = "first-week-v1"
 
 
@@ -240,6 +240,111 @@ SESSIONS = (
         "Subtracting the three corner fractions and simplifying gives (pqr−1)²/[(pq+p+1)(qr+q+1)(rp+r+1)]. The denominators are positive, so the area vanishes exactly when pqr=1. The three dividing lines then meet at one point, even when the three ratios differ.",
         builds_on=(11, 12, 13),
     ),
+    Session(
+        "cevian_total_recovery", "unequal_three_cevians",
+        "An area fraction can recover the missing whole before measuring the central region.",
+        ("unequal three-line decomposition", "reversing an area fraction"),
+        (
+            "Day 14 gave the whole triangle's area. Here only one corner area is known. Can you first express that corner as a fraction of the whole?",
+            "Write T for the unknown total. The side divisions still determine BP:PE and therefore the fraction of T occupied by ABP.",
+            "For BD:DC=p:1 and CE:EA=q:1, ABP has fraction p/(pq+p+1). Divide its given area by this fraction to recover T, then find the other two corner areas and subtract all three.",
+        ),
+        "Keep the total symbolic until a known part fixes its scale. The remaining area calculations can then reuse the forward argument.",
+        "Did you recover the total first, or express every other area directly as a multiple of ABP? Compare the two routes.",
+        "Could a given area for BCQ or CAR replace the given ABP area?",
+        "Yes. With positive side ratios, each corner occupies a known positive fraction of the total. Divide the given corner area by its own fraction, then use the recovered total.",
+        builds_on=(8, 14),
+    ),
+    Session(
+        "cevian_missing_ratio", "cevian_total_recovery",
+        "Use an area measurement to recover an unstated geometric constraint.",
+        ("shared-height area ratios", "inverse intersection reasoning", "unequal corner fractions"),
+        (
+            "Before locating D, use the known division of AC to find the area of ABE. How much of ABE remains outside ABP?",
+            "ABP and APE share a height to BE, so their areas determine BP:PE. Now run the shared-base height argument backward to find BD:DC.",
+            "Let X=area ABP and Y=area APE. If BD:DC=t:1 and CE:EA=q:1, then BP:PE=t(q+1):1. Thus t=X/[Y(q+1)]. Use this recovered ratio to calculate the remaining corners.",
+        ),
+        "An area can encode a missing side division. Recover the geometric constraint before applying the area decomposition.",
+        "At which point did you know D's position was uniquely determined, without measuring it on the diagram?",
+        "For fixed total T and CE:EA=q:1, what happens to ABP's area as BD:DC=t:1 increases?",
+        "Its fraction t/[(q+1)t+1] increases toward 1/(q+1). Equivalently, it is 1/[q+1+1/t], whose denominator decreases. ABP approaches the whole of ABE without reaching it for a finite positive t.",
+        builds_on=(11, 14, 15),
+    ),
+    Session(
+        "cevian_double_recovery", "cevian_missing_ratio",
+        "Recover the total and a hidden side division in the right dependency order.",
+        ("inverse area scale", "inverse intersection ratio", "area partitions"),
+        (
+            "Two things are missing, but the known side divisions already fix ABP's fraction of the whole. Start with the unknown that this resolves.",
+            "Once the total is known, find CAD and subtract the given CAR. The remaining triangle CDR shares its height to AD with CAR.",
+            "Recover AR:RD as area CAR : area CDR. If AF:FB=t:1 and BD:DC=p:1, the shared-height argument gives AR:RD=t(p+1):1. Solve for t, then calculate BCQ and subtract the three corners.",
+        ),
+        "Resolve dependent unknowns in sequence: one known corner fixes the whole, a second fixes a line, and that line determines the remaining area.",
+        "Which fact unlocked each stage? Could you explain why trying to recover the hidden side division first was less direct?",
+        "With BD:DC=p:1 fixed, what upper bound must CAR's area satisfy for F to lie strictly inside AB?",
+        "CAR is strictly smaller than CAD, whose area is T/(p+1). Their ratio is AR/AD<1. Equality would push R to D and require the limiting division AF:FB to be unbounded.",
+        builds_on=(15, 16),
+    ),
+    Session(
+        "cevian_corner_band", "cevian_parallel_band",
+        "Compare two intersection positions on the same line before applying similarity.",
+        ("recovering a whole area", "part-to-whole segment ratios", "squared similarity scales"),
+        (
+            "The shaded quadrilateral is ARC minus APS. The parallel sides make those two triangles similar, but their scale is AP:AR, not a ratio to all of AD.",
+            "Recover the total from ABP. Use shared-height areas to find AP/AD, and a separate intersection comparison to find AR/AD.",
+            "For side ratios p:1, q:1 and r:1, AP/AD=(p+1)/(pq+p+1) and AR/AD=r(p+1)/(rp+r+1). Divide these to get AP/AR. Square that scale to find APS as a fraction of ARC, then subtract.",
+        ),
+        "Two ratios measured from one vertex can be divided to change the reference segment. Only then do you have the linear scale that similarity needs.",
+        "Where would using AP/AD directly as the similarity scale lead you astray? Draw the two reference triangles.",
+        "What happens to the shaded band when pqr approaches 1 from above?",
+        "AP/AR=(rp+r+1)/[r(pq+p+1)] tends to 1. P and R approach the same point, APS approaches ARC, and the shaded band shrinks to zero.",
+        builds_on=(12, 15, 17),
+    ),
+    Session(
+        "nested_three_cevians", "three_cevians",
+        "Apply a familiar area argument again inside a triangle you first have to recover.",
+        ("unequal outer corner fractions", "equal cyclic inner fractions", "changing the reference whole"),
+        (
+            "Treat this as two successive puzzles. First ignore the lines inside PQR and find the area of PQR itself.",
+            "Now let PQR be the whole triangle. Its three side divisions are equal, so the argument from Day 13 applies even if this triangle looks irregular.",
+            "For the inner 2:1 divisions, each corner PQX, QRY and RPZ occupies 2/7 of PQR. Subtract all three from PQR. Take care to apply these fractions to PQR's area, not ABC's.",
+        ),
+        "A derived figure can become the starting figure for a second proof. Fractions from successive layers multiply because their reference wholes differ.",
+        "How did you keep the two sets of vertex names and the two whole areas separate?",
+        "If another equal 2:1 construction were repeated inside XYZ, what fraction of XYZ would the new center occupy?",
+        "It would occupy 1/7 of XYZ. After n such equal-division layers inside PQR, the remaining area is area(PQR)/7ⁿ; no equilateral-shape assumption is needed.",
+        builds_on=(13, 14, 18),
+    ),
+    Session(
+        "nested_unequal_cevians", "nested_three_cevians",
+        "Coordinate two full area decompositions without an equal-corner shortcut in either layer.",
+        ("nested reference triangles", "three unequal intersection arguments", "multiplying area fractions"),
+        (
+            "Find PQR from ABC first. Then look only at PQR and its internal side divisions; the inner corners no longer have equal areas.",
+            "Rename the whole area K=area PQR. Derive PQX, QRY and RPZ separately, using the same shared-height comparisons as for the outer corners.",
+            "If QU:UR=u:1, RV:VP=v:1 and PW:WQ=w:1, the inner corner fractions of K are u/(uv+u+1), v/(vw+v+1) and w/(wu+w+1). Subtract them from 1 and multiply by the previously found K.",
+        ),
+        "The proof can be reused across layers, but the ratios and the reference area must be reassigned each time. Each layer has its own three unequal corners.",
+        "Did a table of ratios help more than repeatedly annotating the picture? Compare how you avoided mixing the layers.",
+        "Would swapping the two sets of side ratios between the outer and inner layers change XYZ's fraction of ABC?",
+        "No. Each set produces its own central-area fraction, independent of the starting triangle's shape. The two fractions multiply, so their order does not change the final area fraction, although the diagram and the intermediate area change.",
+        builds_on=(14, 19),
+    ),
+    Session(
+        "nested_cevian_recovery", "nested_unequal_cevians",
+        "Reverse both layers from the smallest known area, then choose the correct complement.",
+        ("two unequal decompositions", "inverse area scaling", "tracking nested complements"),
+        (
+            "The known area is at the very center, while the requested region is outside PQR. First determine the fraction retained by each layer without knowing either whole area.",
+            "Work outward: divide XYZ's area by its fraction of PQR to recover PQR. Then divide by PQR's fraction of ABC to recover ABC.",
+            "Let f be PQR/ABC and g be XYZ/PQR, found by the two three-corner decompositions. For given area X of XYZ, PQR=X/g and ABC=X/(fg). The requested frame is X/(fg)−X/g.",
+        ),
+        "The final rung combines forward geometric derivations, two inverse scale steps, and a complement whose inner boundary is the intermediate triangle.",
+        "Which area would you accidentally subtract if you focused only on the known number? Explain the boundary of the requested shading before doing arithmetic.",
+        "Suppose a third inner construction retains a fraction h of XYZ and its center has known area L. Express the same outer frame using f, g, h and L.",
+        "Recover PQR=L/(gh) and ABC=L/(fgh). The outer frame is L/(fgh)−L/(gh)=L(1−f)/(fgh). Each reversed layer requires division by its own retained fraction.",
+        builds_on=(15, 17, 20),
+    ),
 )
 
 
@@ -365,7 +470,7 @@ def generate_pilot(seed: int, outdir: str) -> dict:
         "Both people should use the same edition seed.\n\n"
         "Some sessions introduce an idea; others ask you to recognize it in a new setting. "
         "Later sessions may take longer. Warm-ups and hints are part of solving; use them freely.\n\n"
-        "Days 8–14 form a harder ladder: each adds a reasoning step or combines ideas from earlier days. "
+        "Days 8–21 form a harder ladder: each adds a reasoning step or combines ideas from earlier days. "
         "The Easy/Medium/Hard labels are broad estimates; the later Hard puzzles continue to increase in structural difficulty.\n\n"
         + "\n".join(index) + "\n\n"
         "The question pages do not print answers. Hints, explanations, and stretch answers open separately. "

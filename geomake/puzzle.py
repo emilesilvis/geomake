@@ -31,6 +31,7 @@ class Given:
     p2: Optional[tuple] = None
     vertex: Optional[tuple] = None
     outside: bool = True  # side labels: place outside the figure
+    font_size: float = 12.5  # compact point labels for nested diagrams
 
 
 @dataclass

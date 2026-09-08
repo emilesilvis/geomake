@@ -27,7 +27,7 @@ python3 -m venv .venv
 # graded easy->hard ladder (validated ordering) + answer key in ladder/answers/
 .venv/bin/python -m geomake ladder --n 12 --seed 7 --out ladder
 
-# fourteen authored daily sessions for two, with optional help and discussion
+# twenty-one authored daily sessions for two, with optional help and discussion
 .venv/bin/python -m geomake pilot --seed 7 --out out/daily-pilot
 # Open out/daily-pilot/START_HERE.md; share the whole folder with your partner.
 
@@ -42,8 +42,8 @@ python3 reader/serve.py
 
 ## Toward a daily puzzle tool
 
-`geomake pilot` produces a fourteen-day content trial: one shared main puzzle per
-day, thirteen optional warm-ups, three separately revealed hints per main puzzle,
+`geomake pilot` produces a twenty-one-day content trial: one shared main puzzle per
+day, twenty optional warm-ups, three separately revealed hints per main puzzle,
 worked explanations, optional extensions, and prompts to compare approaches.
 The question pages include the full statement alongside the diagram. Both
 players should use the same edition seed and preserve the folder structure.
@@ -51,19 +51,26 @@ Output folders must be empty, so generating another edition cannot overwrite
 feedback. The `editor.json` manifest contains spoilers.
 
 The original seven puzzles introduce invariance, decomposition, and symmetry.
-Seven new puzzles continue from Day 7 in increasing structural difficulty:
+Days 8–14 continue from Day 7 in increasing structural difficulty:
 reverse area ratios, similarity, intersecting lines, recovering missing areas,
-parallel strips, and two three-line triangle challenges. Each new session names
+parallel strips, and two three-line triangle challenges. Days 15–21 add reverse
+area scaling, hidden side-division recovery, similarity between intersecting
+triangles, and two nested layers that culminate in an inverse-area challenge.
+Each continuation session names
 the earlier ideas it builds on; the generator checks that its difficulty score
-strictly increases from the preceding rung. The original seven questions keep
+strictly increases from the preceding rung. The first fourteen questions keep
 their seeds and answers. Player experience is still needed to calibrate the
 progression; changing the edition seed supplies variations of the same ideas. The
 [static reader](reader/README.md) shows the question, answer check, progressive
-hints, solution, previous/next links and a collapsed list of all puzzles. It uses emilesilvis.com's stylesheet
-and existing GitHub Pages hosting, and remembers entered answers in the current
-browser. Correct answers unlock puzzles in order; the Next link, archive, and
-direct puzzle URLs follow the same saved progress. It does not schedule future
-days or synchronize player progress.
+hints, previous/next links and a collapsed list of all puzzles. Worked solutions
+remain in the Markdown pack and editor manifest; the reader does not export them.
+It uses emilesilvis.com's stylesheet and existing GitHub Pages hosting. The
+[Cloudflare backend](backend/README.md) asks for a name or nickname, checks
+answers, and saves correct solves to a public leaderboard. Equal scores share
+a rank. Correct answers unlock puzzles in order; the Next link, archive, and
+direct puzzle URLs follow the same saved progress. Draft answers and the private
+player token stay in the browser. There is no calendar scheduling or device linking.
+Build with `--api-url` to connect the backend, or omit it for standalone use.
 
 See the [daily-tool design and build sequence](docs/daily-puzzle-tool.md) and
 the [primary-source research](docs/puzzle-design-research.md). The design
@@ -118,7 +125,7 @@ Every generated puzzle also has an **estimated difficulty label**: depth 1 →
 pages, and the browser reader and archive. The other scoring factors order
 puzzles within a band; these broad labels are not calibrated player ratings.
 
-### Recipes (28)
+### Recipes (35)
 
 - **depth 1** — `rect_area`, `tri_right_area`, `circle_area`,
   `triangle_angle_sum`, `square_diagonal`
@@ -129,7 +136,10 @@ puzzles within a band; these broad labels are not calibrated player ratings.
   `chained_rect_square_circle`, `square_plus_semicircle`,
   `tangent_chord_annulus`, `rotated_square_overlap`, `tilted_square_frame`,
   `crossed_trapezoid`, `crossing_cevians`, `cevian_area_recovery`,
-  `cevian_parallel_band`, `three_cevians`, `unequal_three_cevians`
+  `cevian_parallel_band`, `three_cevians`, `unequal_three_cevians`,
+  `cevian_total_recovery`, `cevian_missing_ratio`, `cevian_double_recovery`,
+  `cevian_corner_band`, `nested_three_cevians`, `nested_unequal_cevians`,
+  `nested_cevian_recovery`
 
 Targets cover **area** (shaded region), **length**, and **angle**.
 

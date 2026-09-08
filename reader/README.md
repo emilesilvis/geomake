@@ -1,24 +1,28 @@
 # Puzzle reader
 
-Plain HTML, CSS and JavaScript for **emilesilvis.com/geomake/**. No runtime
-framework, account, database, or build dependencies. The page uses the host's
-`/static/css/style.css` and its existing `theme` preference. Only the puzzle,
-answer check, progressive hints, solution, previous/next links and a collapsed
-“All puzzles” list are shown. Every puzzle has a stable, bookmarkable URL.
+Plain HTML, CSS and JavaScript for **emilesilvis.com/geomake/**, with a
+[Cloudflare Worker and D1 backend](../backend/README.md) for public progress.
+The page uses the host's `/static/css/style.css` and existing `theme` preference.
+It shows a name prompt, puzzle, answer check, progressive hints, previous/next
+links, and collapsed “All puzzles” and “Leaderboard” lists.
+Every puzzle has a stable, bookmarkable URL.
 Solve them in order: checking a correct answer unlocks the next puzzle. The
 Next link and archive keep later puzzles locked, and opening a locked URL
 shows a link to the first unfinished puzzle. Solved puzzles remain available
-to revisit, even if you change their entered answers. Hints and solutions are
-available on the current puzzle without unlocking the next one.
+to revisit, even if you change their entered answers. Hints are available on the
+current puzzle without unlocking the next one. Worked solutions are neither
+shown nor exported by the reader.
 
 Pages and archive entries show the generator's estimated difficulty label:
 Easy (depth 1), Medium (depth 2), or Hard (depth 3). The exporter requires a
 label on every puzzle. Labels are excluded from the edition identity, so
 adding or recalibrating them preserves existing saved answers.
 
-The default authored pack has fourteen puzzles. Puzzles 8–14 continue upward
-from Puzzle 7, combining area ratios, similarity and intersecting lines; they
-remain in the broad Hard band. Navigation and the archive include the whole pack.
+The default authored pack has twenty-one puzzles. Puzzles 8–21 continue upward
+from Puzzle 7, combining area ratios, similarity and intersecting lines. The
+third week adds missing-area and side-division recovery, then nested triangles
+and a final inverse problem. They remain in the broad Hard band. Navigation and
+the archive include the whole pack; the first fourteen questions retain their seeds.
 
 From the geomake repository root:
 
@@ -31,6 +35,27 @@ python3 reader/serve.py
 node --test reader/tests/*.test.js
 .venv/bin/python -m pytest tests/test_reader.py
 ```
+
+Those commands build the standalone reader. To connect the deployed leaderboard,
+build with the **same manifest used to deploy the backend**:
+
+```sh
+python3 reader/build.py --edition out/daily-pilot-v3/editor.json \
+  --api-url https://geomake-leaderboard.crayfish.workers.dev
+```
+
+Players enter a name or nickname before solving. Their name and solved-puzzle
+count are public; equal counts share a rank. A random private token saved in
+the browser identifies the player, so there is no password or email signup.
+Changing the name keeps the same progress. Clearing browser storage or switching
+devices creates a separate player; there is no account recovery or device linking.
+
+The Worker checks answers and saves correct solves in D1. Skipped puzzles are
+rejected by the server, and repeating a correct answer cannot increase the count.
+Connected exports contain neither numeric answer files nor worked solutions.
+Draft answers remain in browser storage. Saved completion from identical earlier
+seven- or fourteen-puzzle editions is imported after its saved answers pass the
+server checks. Stable puzzle identities preserve public solves when days are appended.
 
 `build.py --edition path/to/editor.json --out path/to/output` can export another
 authored edition. Output may be empty or an earlier generated reader. It is
@@ -46,19 +71,15 @@ a snapshot of that stylesheet for the local preview only, with blank-line
 whitespace normalized (source Git blob `7dd53042746af49f15fb7bf3ea0fe1a0e1439854`).
 It is not included in the export.
 
-The first statement and diagram work without JavaScript; checking answers and
-unlocking later puzzles requires it. Hints and explanations are
-fetched only on request; an answer check fetches just the numeric answer.
-These are public static files, so a visitor who inspects them can read answers.
-Entered answers and completed puzzles are remembered only in that browser,
-using edition-scoped localStorage keys. When persistent storage is unavailable,
-sessionStorage preserves them for the current tab. If both are blocked, answers
-can still be checked, but browser storage must be allowed to unlock more puzzles.
-Existing saved answers are restored; check them once to record completion.
-Progress is never uploaded; this reader does not synchronize devices or maintain
-player accounts. The gate guides normal navigation; the public static files
-and browser-stored progress can be inspected or modified.
+JavaScript and browser storage are required for names, answer checks and progress.
+When localStorage is unavailable, sessionStorage preserves the player for the
+current tab. Hints are fetched only on request. Full worked solutions remain in
+the Markdown pilot and editor manifest.
 
-The two-week pack remains self-paced. There is no calendar lock or automatic supply of
+Omitting `--api-url` builds a standalone reader with no name prompt, leaderboard,
+or uploads. Its numeric checks are public static files and progress is saved only
+in the browser. The standalone gate guides navigation and is editable by the visitor.
+
+The three-week pack remains self-paced. There is no calendar lock or automatic supply of
 future weeks. The fuller warm-ups, extensions and discussion prompts remain in
 the Markdown pilot rather than adding controls to this page.

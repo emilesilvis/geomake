@@ -1,0 +1,17 @@
+{
+  "$schema": "https://unpkg.com/wrangler/config-schema.json",
+  "name": "geomake-leaderboard",
+  "account_id": "1bfd29ac3c27b5f9696aeba2209985c1",
+  "main": "worker.js",
+  "compatibility_date": "2026-09-08",
+  "workers_dev": true,
+  "vars": {
+    "ALLOWED_ORIGINS": "https://emilesilvis.com,https://www.emilesilvis.com,http://localhost:3000,http://127.0.0.1:3000"
+  },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "geomake-leaderboard",
+    "database_id": "3e7fb8ac-520d-403a-a904-c7898dc507dd",
+    "migrations_dir": "migrations"
+  }]
+}

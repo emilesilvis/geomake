@@ -23,7 +23,7 @@ def edition(tmp_path):
         "unit": "cm", "target_kind": "area", "answer": {"float": 40, "display": "40 cm²"},
         "difficulty": {"depth": (day - 1) % 3 + 1, "label": ("Easy", "Medium", "Hard")[(day - 1) % 3]},
         "solution_steps": ["The secret derivation."], "hints": ["First nudge.", "Second nudge.", "Final nudge."],
-    } for day in range(1, 15)]
+    } for day in range(1, 22)]
     manifest = source / "editor.json"
     manifest.write_text(json.dumps({"sessions": records}))
     return manifest
@@ -31,7 +31,7 @@ def edition(tmp_path):
 
 def test_static_pages_escape_text_and_keep_help_in_separate_files(edition, tmp_path):
     output = reader.build(edition, tmp_path / "site")
-    for day in range(1, 15):
+    for day in range(1, 22):
         html = (output / reader.page_name(day)).read_text()
         assert "A &lt; B &amp; &quot;C&quot;" in html
         assert "40 cm²" not in html
@@ -49,10 +49,13 @@ def test_static_pages_escape_text_and_keep_help_in_separate_files(edition, tmp_p
         help_path = re.search(r'data-help="([^"]+)"', html)[1]
         assert json.loads((output / help_path / "check.json").read_text()) == 40
         assert json.loads((output / help_path / "hint-1.json").read_text()) == "First nudge."
-        assert html.count('class="archive-difficulty"') == 14
+        assert not (output / help_path / "solution.json").exists()
+        assert 'id="explain"' not in html
+        assert 'id="solution"' not in html
+        assert html.count('class="archive-difficulty"') == 21
         assert ('rel="prev"' in html) == (day > 1)
-        assert ('rel="next"' in html) == (day < 14)
-        if day < 14:
+        assert ('rel="next"' in html) == (day < 21)
+        if day < 21:
             assert f'data-href="{reader.page_name(day + 1)}" rel="next"' in html
     assert not (output / "host-style.css").exists()
     assert not (output / "editor.json").exists()
@@ -69,7 +72,7 @@ def test_later_puzzles_and_navigation_start_locked_until_progress_is_restored(ed
             self.elements.append((tag, dict(attrs)))
 
     output = reader.build(edition, tmp_path / "site")
-    for day in range(1, 15):
+    for day in range(1, 22):
         page = Page((output / reader.page_name(day)).read_text())
         ids = {attrs["id"]: attrs for _, attrs in page.elements if "id" in attrs}
         assert ("hidden" in ids["puzzle"]) == (day > 1)
@@ -77,7 +80,7 @@ def test_later_puzzles_and_navigation_start_locked_until_progress_is_restored(ed
         assert ids["resume"]["href"] == "index.html"
         for tag, attrs in page.elements:
             if tag == "main":
-                assert attrs["data-total"] == "14"
+                assert attrs["data-total"] == "21"
             if "data-puzzle-day" in attrs:
                 if attrs["data-puzzle-day"] == "1":
                     assert attrs["href"] == "index.html"
@@ -131,3 +134,47 @@ def test_adding_labels_keeps_the_identity_used_for_existing_saved_answers(editio
             puzzle["warmup"]["difficulty"].pop("label")
     original_hash = hashlib.sha256(json.dumps(manifest, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:16]
     assert identity == original_hash == reader.edition_identity(manifest)
+
+
+def test_connected_reader_collects_a_public_name_and_never_exports_answer_checks(edition, tmp_path):
+    output = reader.build(edition, tmp_path / "site", "https://geomake.example.workers.dev/")
+    html = (output / "index.html").read_text()
+    assert 'data-api="https://geomake.example.workers.dev"' in html
+    assert 'id="player-name"' in html
+    assert "will be public" in html
+    assert 'id="leaderboard"' in html
+    assert 'id="puzzle" aria-label="Puzzle" hidden' in html
+    assert not list(output.rglob("check.json"))
+    assert not list(output.rglob("solution.json"))
+    assert not (output / "puzzles.json").exists()
+    assert not (output / "worker.js").exists()
+    assert list(output.rglob("hint-1.json"))
+    assert "'./leaderboard.js?v=" in (output / "app.js").read_text()
+
+
+@pytest.mark.parametrize("url", ["http://public.example", "https://user:secret@api.example", "https://api.example/path", "https://api.example?token=secret"])
+def test_api_must_use_an_origin_without_credentials_or_query_parameters(edition, tmp_path, url):
+    with pytest.raises(ValueError, match="HTTPS origin"):
+        reader.build(edition, tmp_path / "site", url)
+
+
+def test_solve_identity_survives_editorial_changes_but_not_a_changed_question(edition):
+    puzzle = json.loads(edition.read_text())["sessions"][0]
+    original = reader.puzzle_identity(puzzle)
+    puzzle["difficulty"]["label"] = "Hard"
+    puzzle["hints"] = ["An improved hint."]
+    assert reader.puzzle_identity(puzzle) == original
+    puzzle["question"] += " A changed given."
+    assert reader.puzzle_identity(puzzle) != original
+
+
+def test_only_identical_published_prefixes_can_restore_an_earlier_edition(edition):
+    manifest = json.loads(edition.read_text())
+    manifest.update(version="three-week-ladder-v1", seed=7)
+    predecessors = reader.previous_editions(manifest)
+    assert len(predecessors) == 2
+    for item, version in zip(predecessors, ("first-week-v1", "two-week-ladder-v1")):
+        old = {**manifest, "version": version, "sessions": manifest["sessions"][:item["total"]]}
+        assert reader.edition_identity(old) == item["edition"]
+    manifest["sessions"][0]["question"] += " Changed."
+    assert {p["edition"] for p in reader.previous_editions(manifest)}.isdisjoint(p["edition"] for p in predecessors)
