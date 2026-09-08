@@ -53,7 +53,10 @@ test('registration is idempotent; private tokens and other players cannot be ove
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM players').get().n, 2);
   const stored = sqlite.prepare('SELECT token_hash FROM players WHERE id=?').get(first.body.id).token_hash;
   assert.notEqual(stored, alice);
+  assert.deepEqual((await request('/leaderboard')).body.players, []);
+  await request('/check', { token: alice, data: { day: 1, answer: '40' } });
   const board = await request('/leaderboard');
+  assert.equal(board.body.players.length, 1);
   assert.equal(JSON.stringify(board.body).includes(stored), false);
   assert.deepEqual(Object.keys(board.body.players[0]).sort(), ['id', 'name', 'rank', 'solved']);
 });
@@ -65,9 +68,13 @@ test('only correct consecutive answers advance progress, and retries count once'
   const wrong = await request('/check', { token: alice, data: { day: 1, answer: '41', correct: true } });
   assert.equal(wrong.body.correct, false);
   assert.equal(wrong.body.player.completedThrough, 0);
+  assert.deepEqual((await request('/leaderboard')).body.players, []);
   const right = await request('/check', { token: alice, data: { day: 1, answer: '80/2' } });
   assert.equal(right.body.correct, true);
   assert.equal(right.body.player.completedThrough, 1);
+  assert.deepEqual((await request('/leaderboard')).body.players, [
+    { id: right.body.player.id, name: 'Alice', solved: 1, rank: 1 },
+  ]);
   await request('/check', { token: alice, data: { day: 1, answer: '40' } });
   const changedDraft = await request('/check', { token: alice, data: { day: 1, answer: 'wrong' } });
   assert.equal(changedDraft.status, 400);
@@ -99,12 +106,16 @@ test('public ranks share ties; another player cannot submit using a public playe
     await request('/player', { token, data: { name } });
   }
   await request('/check', { token: alice, data: { day: 1, answer: '40' } });
+  await request('/check', { token: alice, data: { day: 2, answer: 'pi' } });
   await request('/check', { token: bob, data: { day: 1, answer: '40' } });
+  await request('/check', { token: bob, data: { day: 2, answer: 'pi' } });
+  assert.equal((await request('/leaderboard')).body.players.length, 2);
+  await request('/check', { token: charlie, data: { day: 1, answer: '40' } });
   const board = (await request('/leaderboard')).body;
   assert.deepEqual(board.players.map(row => row.rank), [1, 1, 3]);
-  assert.deepEqual(board.players.map(row => row.solved), [1, 1, 0]);
+  assert.deepEqual(board.players.map(row => row.solved), [2, 2, 1]);
   assert.equal((await request('/check', { token: board.players[0].id, data: { day: 2, answer: 'pi' } })).status, 401);
-  assert.deepEqual((await request('/player', { token: charlie })).body.solved, []);
+  assert.deepEqual((await request('/player', { token: charlie })).body.solved, [1]);
 });
 
 test('appending puzzles preserves solves; changing a question does not inherit its predecessor’s solve', async t => {
@@ -114,9 +125,10 @@ test('appending puzzles preserves solves; changing a question does not inherit i
   app.replaceCatalog({ edition: 'extended', puzzles: [...catalog.puzzles, { id: 'four', answer: 9 }] });
   const extended = await app.request('/player', { token: alice, edition: 'extended' });
   assert.equal(extended.body.completedThrough, 1);
+  assert.equal((await app.request('/leaderboard', { edition: 'extended' })).body.players[0].solved, 1);
   app.replaceCatalog({ edition: 'changed', puzzles: [{ id: 'one-revised', answer: 42 }, ...catalog.puzzles.slice(1)] });
   const changed = await app.request('/player', { token: alice, edition: 'changed' });
   assert.equal(changed.body.completedThrough, 0);
   assert.deepEqual(changed.body.solved, []);
-  assert.equal((await app.request('/leaderboard', { edition: 'changed' })).body.players[0].solved, 0);
+  assert.deepEqual((await app.request('/leaderboard', { edition: 'changed' })).body.players, []);
 });

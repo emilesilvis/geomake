@@ -10,6 +10,7 @@ saves correct solves and serves the public leaderboard. Players use a name or
 nickname and a random private browser token; there is no email or password flow.
 The database stores the token's SHA-256 hash, never the token itself. Public rows
 contain only an unrelated player ID, name, solved count and rank. Ties share a rank.
+Players appear only after correctly solving at least one puzzle in the current edition.
 
 ## Build and deploy
 
@@ -65,7 +66,7 @@ use `Authorization: Bearer <64-character random hexadecimal token>`.
 | `POST /player` | Save `{name}` using the browser's token; retries update the same player. |
 | `GET /player` | Return the saved name, solved days and consecutive completion. |
 | `POST /check` | Check `{day, answer}`; reject skipped days and count correct solves once. |
-| `GET /leaderboard` | Public top 100, ordered by solved count, then name; ties share a rank. |
+| `GET /leaderboard` | Public top 100 with at least one current puzzle solved, ordered by solved count, then name; ties share a rank. |
 
 The answer parser accepts bounded arithmetic, not executable code. JSON bodies
 are limited to 2 KiB. Names are normalized, limited to 40 characters and rendered

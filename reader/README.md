@@ -45,7 +45,8 @@ python3 reader/build.py --edition out/daily-pilot-v3/editor.json \
 ```
 
 Players enter a name or nickname before solving. Their name and solved-puzzle
-count are public; equal counts share a rank. A random private token saved in
+count appear on the public leaderboard after their first correct solve; equal
+counts share a rank. A random private token saved in
 the browser identifies the player, so there is no password or email signup.
 Changing the name keeps the same progress. Clearing browser storage or switching
 devices creates a separate player; there is no account recovery or device linking.
