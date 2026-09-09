@@ -8,7 +8,9 @@ local credential store. This deployment does not opt in to a paid Workers plan.
 The existing GitHub Pages site serves the reader. The Worker checks answers,
 saves correct solves and serves the public leaderboard. Players use a name or
 nickname and a random private browser token; there is no email or password flow.
-The database stores the token's SHA-256 hash, never the token itself. Public rows
+The database stores each token's SHA-256 hash, never the token itself. Players can
+save their private token as a recovery code and paste it into the reader to log
+back in on another browser. Public rows
 contain only an unrelated player ID, name, solved count and rank. Ties share a rank.
 Players appear only after correctly solving at least one puzzle in the current edition.
 
@@ -72,7 +74,23 @@ The answer parser accepts bounded arithmetic, not executable code. JSON bodies
 are limited to 2 KiB. Names are normalized, limited to 40 characters and rendered
 as text. Browser origins are checked and API responses are not cached.
 
-Draft answers remain in the browser. The server stores only successful puzzle
-IDs and timestamps, not submitted answers or incorrect attempts. Clearing browser
-storage or using another device loses access to that player; knowing a display
-name does not grant access. Device linking and recovery are outside this simple setup.
+Draft answers remain in the browser, scoped to the player. The server stores only
+successful puzzle IDs and timestamps, not submitted answers or incorrect attempts.
+Knowing a display name does not grant access. Recovery uses the same authenticated
+`GET /player` as normal loading: the reader validates the code with the server
+before replacing its saved login. Codes never appear in URLs or public responses.
+
+`0002_player_tokens.sql` preserves existing tokens and permits multiple private
+codes for one player without copying solves or adding duplicate leaderboard rows.
+Apply the migration before deploying the Worker. It also accepts original tokens
+from registrations handled by the old Worker during the deployment window.
+
+If a player loses every copy of their code, operator recovery requires identifying
+their existing player ID and checking the solve history. Back up the relevant
+records first. Generate 32 random bytes, format them as 64 lowercase hex characters,
+hash that string with SHA-256, and insert only the hash and existing player ID into
+`player_tokens`. Deliver the code privately; do not commit it, embed it in a URL,
+or change solve rows. Existing codes continue working. A known replacement browser
+can instead be reconnected by updating its `player_tokens.player_id` after verifying
+that the replacement record is empty and belongs to the same player. Name matching
+alone must never provide automatic recovery.

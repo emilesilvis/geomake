@@ -13,7 +13,10 @@ export function createApp(catalog) {
     if (!token) throw new HttpError(401, 'Enter your name to save progress.');
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
     const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
-    const row = await db.prepare('SELECT id, name FROM players WHERE token_hash = ?').bind(hash).first();
+    const row = await db.prepare(`SELECT p.id, p.name FROM players p
+      JOIN player_tokens t ON t.player_id = p.id WHERE t.token_hash = ?`).bind(hash).first()
+      // An old Worker may register a player between migration and deployment.
+      ?? await db.prepare('SELECT id, name FROM players WHERE token_hash = ?').bind(hash).first();
     if (!row && required) throw new HttpError(401, 'Enter your name to save progress.');
     return { row, hash };
   }
@@ -76,11 +79,19 @@ export function createApp(catalog) {
       if (!name || [...name].length > 40 || /[\p{Cc}\p{Cf}]/u.test(name)) {
         throw new HttpError(400, 'Use a name between 1 and 40 characters.');
       }
-      const { hash } = await player(request, env.DB, false);
+      const { row: existing, hash } = await player(request, env.DB, false);
       // The browser saves its random token before this request, so retrying a
       // lost registration response updates the same player rather than duplicating it.
-      await env.DB.prepare(`INSERT INTO players(id, token_hash, name) VALUES(?, ?, ?)
-        ON CONFLICT(token_hash) DO UPDATE SET name = excluded.name`).bind(crypto.randomUUID(), hash, name).run();
+      if (existing) {
+        await env.DB.prepare('UPDATE players SET name = ? WHERE id = ?').bind(name, existing.id).run();
+      } else {
+        await env.DB.batch([
+          env.DB.prepare(`INSERT INTO players(id, token_hash, name) VALUES(?, ?, ?)
+            ON CONFLICT(token_hash) DO UPDATE SET name = excluded.name`).bind(crypto.randomUUID(), hash, name),
+          env.DB.prepare(`INSERT INTO player_tokens(token_hash, player_id)
+            SELECT token_hash, id FROM players WHERE token_hash = ? ON CONFLICT DO NOTHING`).bind(hash),
+        ]);
+      }
       const { row } = await player(request, env.DB);
       return profile(env.DB, row);
     }
