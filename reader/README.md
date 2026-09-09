@@ -48,15 +48,22 @@ Players enter a name or nickname before solving. Their name and solved-puzzle
 count appear on the public leaderboard after their first correct solve; equal
 counts share a rank. A random private token saved in
 the browser identifies the player, so there is no password or email signup.
-Changing the name keeps the same progress. Clearing browser storage or switching
-devices creates a separate player; there is no account recovery or device linking.
+Changing the name keeps the same progress. Open **Your recovery code** and save
+the code somewhere private. After clearing browser storage or switching devices,
+choose **Log in with a recovery code** and paste it to restore the same player.
+The code grants access to that player's progress; a display name alone does not.
+Invalid codes and network failures leave the current login unchanged. If the
+code itself is lost, the site operator can issue a replacement after verifying
+which player record belongs to the requester.
 
 The Worker checks answers and saves correct solves in D1. Skipped puzzles are
 rejected by the server, and repeating a correct answer cannot increase the count.
 Connected exports contain neither numeric answer files nor worked solutions.
-Draft answers remain in browser storage. Saved completion from identical earlier
-seven- or fourteen-puzzle editions is imported after its saved answers pass the
-server checks. Stable puzzle identities preserve public solves when days are appended.
+Draft answers remain in browser storage, separately for each player. When first
+registering, saved completion from identical earlier seven- or fourteen-puzzle
+standalone editions is imported after its saved answers pass the server checks.
+Recovery logins load only that player's server progress and do not import another
+player's cached answers. Stable puzzle identities preserve public solves when days are appended.
 
 `build.py --edition path/to/editor.json --out path/to/output` can export another
 authored edition. Output may be empty or an earlier generated reader. It is

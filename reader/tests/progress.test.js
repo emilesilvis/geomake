@@ -103,3 +103,19 @@ test('an identical published prefix preserves drafts and completion when more pu
   assert.equal(extended.markSolved(3), true);
   assert.equal(extended.completedThrough(), 3);
 });
+
+test('connected players keep separate drafts and do not inherit an earlier browser login’s completion', () => {
+  const saved = storage();
+  const stores = [() => saved];
+  const legacy = createProgress('edition', 3, stores);
+  legacy.saveAnswer(1, 'legacy answer');
+  legacy.markSolved(1);
+  const emile = createProgress('edition', 3, stores, [], 'emile');
+  const greyfox = createProgress('edition', 3, stores, [], 'greyfox');
+  assert.equal(emile.loadAnswer(1), '');
+  assert.equal(emile.completedThrough(), 0);
+  emile.saveAnswer(1, '40');
+  assert.equal(greyfox.loadAnswer(1), '');
+  greyfox.saveAnswer(1, '80/2');
+  assert.equal(createProgress('edition', 3, stores, [], 'emile').loadAnswer(1), '40');
+});

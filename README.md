@@ -69,7 +69,8 @@ It uses emilesilvis.com's stylesheet and existing GitHub Pages hosting. The
 answers, and saves correct solves to a public leaderboard. Equal scores share
 a rank. Correct answers unlock puzzles in order; the Next link, archive, and
 direct puzzle URLs follow the same saved progress. Draft answers and the private
-player token stay in the browser. There is no calendar scheduling or device linking.
+player token stay in the browser. Players can save a private recovery code and
+use it to log back in or continue on another device. There is no calendar scheduling.
 Build with `--api-url` to connect the backend, or omit it for standalone use.
 
 See the [daily-tool design and build sequence](docs/daily-puzzle-tool.md) and

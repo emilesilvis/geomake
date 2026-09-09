@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { createApp } from '../api.js';
+import { createLeaderboard } from '../../reader/leaderboard.js';
 
 const catalog = { edition: 'edition', puzzles: [
   { id: 'one', answer: 40 }, { id: 'two', answer: Math.PI }, { id: 'three', answer: 7 },
@@ -11,9 +12,20 @@ const alice = 'a'.repeat(64), bob = 'b'.repeat(64), charlie = 'c'.repeat(64);
 
 function setup(t) {
   const sqlite = new DatabaseSync(':memory:');
-  sqlite.exec(readFileSync(new URL('../migrations/0001_leaderboard.sql', import.meta.url), 'utf8'));
+  const migrations = new URL('../migrations/', import.meta.url);
+  for (const file of readdirSync(migrations).filter(name => name.endsWith('.sql')).sort()) {
+    sqlite.exec(readFileSync(new URL(file, migrations), 'utf8'));
+  }
   t.after(() => sqlite.close());
-  const db = { prepare(sql) { return { bind(...args) {
+  const db = { async batch(statements) {
+    sqlite.exec('BEGIN');
+    try {
+      const results = [];
+      for (const statement of statements) results.push(await statement.run());
+      sqlite.exec('COMMIT');
+      return results;
+    } catch (error) { sqlite.exec('ROLLBACK'); throw error; }
+  }, prepare(sql) { return { bind(...args) {
     const statement = sqlite.prepare(sql);
     return {
       first: async () => statement.get(...args) ?? null,
@@ -24,6 +36,7 @@ function setup(t) {
   let app = createApp(catalog);
   return {
     sqlite,
+    send: (url, options) => app.fetch(new Request(url, options), { DB: db }),
     replaceCatalog(next) { app = createApp(next); },
     async request(path, { token, data, origin = 'https://puzzles.example', edition = 'edition', method } = {}) {
       const headers = { Origin: origin };
@@ -59,6 +72,64 @@ test('registration is idempotent; private tokens and other players cannot be ove
   assert.equal(board.body.players.length, 1);
   assert.equal(JSON.stringify(board.body).includes(stored), false);
   assert.deepEqual(Object.keys(board.body.players[0]).sort(), ['id', 'name', 'rank', 'solved']);
+});
+
+test('a recovery code restores Emile’s eight solves after browser storage is lost, without changing Greyfox’s fourteen', async t => {
+  const app = setup(t);
+  app.replaceCatalog({ edition: 'edition', puzzles: Array.from({ length: 21 }, (_, i) => ({ id: `day-${i + 1}`, answer: 40 })) });
+  const saved = new Map();
+  const store = { getItem: key => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value) };
+  const client = () => createLeaderboard('https://api.example', 'edition', [() => store], app.send);
+  const original = client();
+  const emile = await original.savePlayer('Emile');
+  for (let day = 1; day <= 8; day++) await original.check(day, '40');
+  await app.request('/player', { token: bob, data: { name: 'Greyfox' } });
+  for (let day = 1; day <= 14; day++) await app.request('/check', { token: bob, data: { day, answer: '40' } });
+  const code = original.recoveryCode();
+  assert.match(code, /^(?:[a-f0-9]{8}-){7}[a-f0-9]{8}$/);
+  saved.clear();
+  const fresh = client();
+  assert.equal(await fresh.loadPlayer(), null);
+  assert.equal((await fresh.savePlayer('Emile')).completedThrough, 0, 'a public name alone is not a login');
+  const recovered = await fresh.restorePlayer(`  ${code.toUpperCase()}  `);
+  assert.equal(recovered.id, emile.id);
+  assert.equal(recovered.completedThrough, 8);
+  assert.equal((await client().loadPlayer()).completedThrough, 8, 'the recovered login survives navigation');
+  assert.equal((await app.request('/player', { token: bob })).body.completedThrough, 14);
+  assert.deepEqual((await app.request('/leaderboard')).body.players.map(row => [row.name, row.solved]), [['Greyfox', 14], ['Emile', 8]]);
+  const before = fresh.recoveryCode();
+  await assert.rejects(fresh.restorePlayer('f'.repeat(64)), /recovery code/i);
+  assert.equal(fresh.recoveryCode(), before, 'a rejected code cannot replace the current login');
+  assert.equal((await fresh.loadPlayer()).completedThrough, 8);
+});
+
+test('an operator can reconnect a replacement browser token while preserving the original login and solves', async t => {
+  const { request, sqlite } = setup(t);
+  const original = await request('/player', { token: alice, data: { name: 'Emile' } });
+  await request('/check', { token: alice, data: { day: 1, answer: '40' } });
+  const replacement = await request('/player', { token: bob, data: { name: 'Emile' } });
+  sqlite.prepare('UPDATE player_tokens SET player_id=? WHERE player_id=?').run(original.body.id, replacement.body.id);
+  assert.equal((await request('/player', { token: bob })).body.id, original.body.id);
+  assert.equal((await request('/player', { token: alice })).body.completedThrough, 1);
+  const renamed = await request('/player', { token: bob, data: { name: 'Emile restored' } });
+  assert.equal(renamed.body.id, original.body.id);
+  assert.equal(renamed.body.completedThrough, 1);
+  assert.equal((await request('/player', { token: alice })).body.name, 'Emile restored');
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM solves').get().n, 1);
+});
+
+test('the token migration preserves historical solves and logins created by an old Worker during deployment', async t => {
+  const { request, sqlite } = setup(t);
+  const original = await request('/player', { token: alice, data: { name: 'Emile' } });
+  await request('/check', { token: alice, data: { day: 1, answer: '40' } });
+  const before = sqlite.prepare('SELECT * FROM solves').all();
+  sqlite.exec('DROP TABLE player_tokens');
+  sqlite.exec(readFileSync(new URL('../migrations/0002_player_tokens.sql', import.meta.url), 'utf8'));
+  assert.deepEqual(sqlite.prepare('SELECT * FROM solves').all(), before);
+  assert.equal((await request('/player', { token: alice })).body.id, original.body.id);
+  // Simulate a registration performed by the pre-migration Worker.
+  sqlite.exec('DELETE FROM player_tokens');
+  assert.equal((await request('/player', { token: alice })).body.completedThrough, 1);
 });
 
 test('only correct consecutive answers advance progress, and retries count once', async t => {
